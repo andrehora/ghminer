@@ -1,0 +1,12 @@
+{
+  "name": "ghminer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "jest",
+    "serve": "npx serve . -l 8082"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}
