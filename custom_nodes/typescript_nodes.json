@@ -1,0 +1,6 @@
+[
+  {"name": "todo", "node": "comment", "substring": ["todo", "fixme", "xxx"]},
+  {"name": "test", "node": "call_expression", "substring": ["test("]},
+  {"name": "async_function", "node": "function_declaration", "substring": "async function"},
+  {"name": "console_log", "node": "call_expression", "substring": "console.log"}
+]

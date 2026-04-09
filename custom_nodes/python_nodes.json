@@ -1,0 +1,12 @@
+[
+  {"name": "todo", "node": "comment", "substring": ["todo", "fixme", "xxx"]},
+  {"name": "test", "node": "function_definition", "substring": "def test_"},
+  {"name": "private_method", "node": "function_definition", "substring": "def _"},
+  {"name": "magic_method", "node": "function_definition", "substring": "def __"},
+  {"name": "async_function", "node": "function_definition", "substring": "async def "},
+  {"name": "print", "node": "call", "substring": "print("},
+
+  {"name": "pytest_fixture", "node": "decorated_definition", "substring": "@pytest.fixture"},
+  {"name": "pytest_parametrize", "node": "decorated_definition", "substring": "@pytest.mark.parametrize"},
+  {"name": "fastapi_endpoint", "node": "decorated_definition", "substring": ["@app.", "@router."]}
+]
