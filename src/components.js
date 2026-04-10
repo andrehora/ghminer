@@ -10,7 +10,7 @@
   const { useState, useRef, useMemo, useEffect } = React;
   const {
     BUCKET_ORDER, langIcon, escapeHtml, formatSize,
-    parseHierarchicalQuery, applyTsNodeFilter,
+    parseHierarchicalQuery, applyTsNodeFilter, computeContextualCounts,
   } = Core;
 
   const MAX_ITEMS_PER_TYPE = 10;
@@ -286,14 +286,26 @@
       ? nodeQuery.slice(badgeTypes.join(':').length + 1)
       : nodeQuery;
 
+    const contextCounts = useMemo(
+      () => badgeTypes.length > 0
+        ? computeContextualCounts(tsNodes, badgeTypes.map(t => t.toLowerCase()))
+        : null,
+      [tsNodes, badgeTypes]
+    );
+
     const typeSuggestions = useMemo(() => {
       if (!inputText.startsWith('/')) return [];
       const prefix = inputText.slice(1).trim().toLowerCase();
       return tsNodes
         .filter(n => !prefix || n.typeLower.startsWith(prefix))
-        .map(n => ({ type: n.type, count: n.count, custom: n.custom }))
+        .map(n => ({
+          type: n.type,
+          count: contextCounts ? (contextCounts.get(n.type) || 0) : n.count,
+          custom: n.custom,
+        }))
+        .filter(n => contextCounts ? n.count > 0 : true)
         .sort((a, b) => b.count - a.count);
-    }, [inputText, tsNodes]);
+    }, [inputText, tsNodes, contextCounts]);
     const typeSuggestion = typeSuggestions[0]?.type || '';
 
     const handleInputChange = (e) => {

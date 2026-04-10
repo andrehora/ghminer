@@ -15,6 +15,7 @@ const {
   groupFilesByTsLang,
   parseHierarchicalQuery,
   applyTsNodeFilter,
+  computeContextualCounts,
   langIcon,
   escapeHtml,
   summarizeNodes,
@@ -559,6 +560,91 @@ describe('applyTsNodeFilter', () => {
     const results = applyTsNodeFilter(tsNodes, ['function_declaration', 'identifier'], '', 10);
     const texts = results[0].items.map(i => i.text);
     expect(texts).not.toContain('orphan');
+  });
+});
+
+// ── computeContextualCounts ───────────────────────────────────────────────────
+//
+// Reuses the same fixture as applyTsNodeFilter:
+//   file1.js:
+//     function_declaration [0, 50)
+//       identifier "foo" [5, 8)
+//       identifier "bar" [10, 13)
+//   file2.js:
+//     function_declaration [0, 40)
+//       identifier "baz" [3, 6)
+//     identifier "orphan" [60, 66)  — outside any function_declaration
+//     string "hello" [50, 55)       — outside any function_declaration
+
+describe('computeContextualCounts', () => {
+  const fnNode = makeNode('function_declaration', [
+    { text: 'function foo() {}', file: 'file1.js', start: 0, end: 50 },
+    { text: 'function baz() {}', file: 'file2.js', start: 0, end: 40 },
+  ]);
+  const idNode = makeNode('identifier', [
+    { text: 'foo', file: 'file1.js', start: 5, end: 8 },
+    { text: 'bar', file: 'file1.js', start: 10, end: 13 },
+    { text: 'baz', file: 'file2.js', start: 3, end: 6 },
+    { text: 'orphan', file: 'file2.js', start: 60, end: 66 },
+  ]);
+  const strNode = makeNode('string', [
+    { text: 'hello', file: 'file2.js', start: 50, end: 55 },
+  ]);
+  const tsNodes = [fnNode, idNode, strNode];
+
+  test('returns null for empty filterTypes', () => {
+    expect(computeContextualCounts(tsNodes, [])).toBeNull();
+  });
+
+  test('returns null when a filter type does not exist in tsNodes', () => {
+    expect(computeContextualCounts(tsNodes, ['nonexistent'])).toBeNull();
+  });
+
+  test('single filter: counts nodes inside function_declaration containers', () => {
+    const counts = computeContextualCounts(tsNodes, ['function_declaration']);
+    // 3 identifiers are inside fn declarations (foo, bar, baz); orphan is not
+    expect(counts.get('identifier')).toBe(3);
+    // string "hello" is at [50,55] in file2.js, fn_decl ends at 40 — outside
+    expect(counts.has('string')).toBe(false);
+  });
+
+  test('single filter: only entries with count > 0 are in the Map', () => {
+    const counts = computeContextualCounts(tsNodes, ['function_declaration']);
+    for (const [, v] of counts) {
+      expect(v).toBeGreaterThan(0);
+    }
+    expect(counts.has('string')).toBe(false);
+  });
+
+  test('single filter: orphan identifier (outside all containers) is not counted', () => {
+    const counts = computeContextualCounts(tsNodes, ['function_declaration']);
+    // Total identifiers = 4, but orphan is outside → count should be 3
+    expect(counts.get('identifier')).toBe(3);
+  });
+
+  test('two-level filter: counts nodes within identifier-inside-function containers', () => {
+    // After ['function_declaration', 'identifier'], the containers are the
+    // 3 identifier ranges (foo, bar, baz). Only identifiers contained within
+    // those ranges (i.e., themselves) remain — count = 3.
+    const counts = computeContextualCounts(tsNodes, ['function_declaration', 'identifier']);
+    expect(counts.get('identifier')).toBe(3);
+    // function_declaration nodes are wider than identifier ranges, not contained
+    expect(counts.has('function_declaration')).toBe(false);
+    expect(counts.has('string')).toBe(false);
+  });
+
+  test('filter type with no children in containers returns empty Map', () => {
+    // string "hello" is outside all function_declarations — no strings inside fn containers
+    // Using string as the top-level filter: its only source [50,55] in file2.js.
+    // Then look for function_declarations inside [50,55]: none overlap → empty Map.
+    const counts = computeContextualCounts(tsNodes, ['string', 'function_declaration']);
+    expect(counts).toBeInstanceOf(Map);
+    expect(counts.size).toBe(0);
+  });
+
+  test('returns a Map, not an object', () => {
+    const counts = computeContextualCounts(tsNodes, ['function_declaration']);
+    expect(counts).toBeInstanceOf(Map);
   });
 });
 

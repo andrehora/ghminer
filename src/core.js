@@ -289,6 +289,56 @@
     return { filterTypes, textQ };
   }
 
+  // Builds a containment hierarchy from filterTypes and returns the final-level ranges,
+  // sources, and node entry. Returns null if any type is not found in tsNodes.
+  // filterTypes must be non-empty and lowercased.
+  function buildContainerRanges(tsNodes, filterTypes) {
+    let containerRanges = null;
+    let lastSources = null;
+    let lastNode = null;
+    for (const typeFilter of filterTypes) {
+      const matchingNode = tsNodes.find(n => n.typeLower === typeFilter);
+      if (!matchingNode) return null;
+      let sources = matchingNode.sources;
+      if (containerRanges) {
+        sources = sources.filter(s => {
+          const ranges = containerRanges.get(s.file);
+          if (!ranges) return false;
+          return ranges.some(r => s.startIndex >= r.start && s.endIndex <= r.end);
+        });
+      }
+      containerRanges = new Map();
+      for (const s of sources) {
+        if (!containerRanges.has(s.file)) containerRanges.set(s.file, []);
+        containerRanges.get(s.file).push({ start: s.startIndex, end: s.endIndex });
+      }
+      lastSources = sources;
+      lastNode = matchingNode;
+    }
+    return { containerRanges, lastSources, lastNode };
+  }
+
+  // Compute per-type node counts within the container defined by filterTypes.
+  // filterTypes: ordered array of lowercased node-type names (same as badge types).
+  // Returns Map<type, count> with only types that have count > 0, or null if filterTypes is empty
+  // or a type in filterTypes is not found.
+  function computeContextualCounts(tsNodes, filterTypes) {
+    if (!filterTypes.length) return null;
+    const built = buildContainerRanges(tsNodes, filterTypes);
+    if (!built) return null;
+    const { containerRanges } = built;
+    const counts = new Map();
+    for (const n of tsNodes) {
+      let count = 0;
+      for (const s of n.sources) {
+        const ranges = containerRanges.get(s.file);
+        if (ranges && ranges.some(r => s.startIndex >= r.start && s.endIndex <= r.end)) count++;
+      }
+      if (count > 0) counts.set(n.type, count);
+    }
+    return counts;
+  }
+
   // Apply hierarchical containment filtering to tsNodes.
   // filterTypes: ordered array of lowercased node-type names.
   // textQ: free-text substring filter (already lowercased), may be empty.
@@ -299,37 +349,9 @@
     const out = [];
 
     if (filterTypes.length > 0) {
-      // Build containment hierarchy through type filters.
-      // Each level narrows results to nodes contained within the previous level's nodes.
-      let containerRanges = null; // Map<file, [{start, end}]>
-      let lastLevelSources = null;
-      let lastLevelNode = null;
-
-      for (const typeFilter of filterTypes) {
-        const matchingNode = tsNodes.find(n => n.typeLower === typeFilter);
-        if (!matchingNode) return [];
-
-        let sources = matchingNode.sources;
-
-        // Filter by containment within previous level
-        if (containerRanges) {
-          sources = sources.filter(s => {
-            const ranges = containerRanges.get(s.file);
-            if (!ranges) return false;
-            return ranges.some(r => s.startIndex >= r.start && s.endIndex <= r.end);
-          });
-        }
-
-        // Build ranges for next level
-        containerRanges = new Map();
-        for (const s of sources) {
-          if (!containerRanges.has(s.file)) containerRanges.set(s.file, []);
-          containerRanges.get(s.file).push({ start: s.startIndex, end: s.endIndex });
-        }
-
-        lastLevelSources = sources;
-        lastLevelNode = matchingNode;
-      }
+      const built = buildContainerRanges(tsNodes, filterTypes);
+      if (!built) return [];
+      const { lastSources: lastLevelSources, lastNode: lastLevelNode } = built;
 
       if (!textQ) {
         // Type-only filter — deduplicate by (file, text)
@@ -406,5 +428,6 @@
     summarizeNodes,
     parseHierarchicalQuery,
     applyTsNodeFilter,
+    computeContextualCounts,
   };
 }));
