@@ -553,7 +553,7 @@
                 </div>
                 {customNodes.length > 0 && (
                   <div className="node-type-row top">
-                    <span className="node-type-label custom">Custom Nodes:</span>
+                    <div className="node-type-label custom">Custom Nodes:</div>
                     {customNodes.map(n => {
                       const active = badgeTypes.some(bt => bt.toLowerCase() === n.type.toLowerCase());
                       return (
@@ -581,7 +581,7 @@
                   </div>
                 )}
                 <div className="node-type-row bottom">
-                  <span className="node-type-label builtin">Language Nodes:</span>
+                  <div className="node-type-label builtin">Language Nodes:</div>
                   {topNodeTypes.map(t => {
                     const active = badgeTypes.some(bt => bt.toLowerCase() === t.toLowerCase());
                     return (
@@ -637,9 +637,8 @@
                         const isCustom = custom || customNodeTypes.has(type);
                         return (
                           <tr key={type} className={`data-table__row${isCustom ? ' custom' : ''}`}>
-                            <td className={`data-table__cell-type${isCustom ? ' custom' : ''}`}>
-                              {type}
-                              {isCustom && <span className="custom-badge">custom</span>}
+                            <td className="data-table__cell-type">
+                              <span className={`node-pill${isCustom ? ' custom' : ' builtin'}`}>{type}</span>
                             </td>
                             <td className="data-table__cell text-right">{displayCount.toLocaleString()}</td>
                             <td className="data-table__cell">
