@@ -101,6 +101,12 @@ describe('extOf', () => {
   test('returns empty string when no extension', () => {
     expect(extOf('Makefile')).toBe('');
   });
+
+  test('dotfiles: returns the dotfile name as extension (leading dot is last dot)', () => {
+    // .gitignore → lastIndexOf('.') = 0 → slice(0) = '.gitignore'
+    expect(extOf('.gitignore')).toBe('.gitignore');
+    expect(extOf('path/to/.env')).toBe('.env');
+  });
 });
 
 describe('langOf', () => {
@@ -148,6 +154,20 @@ describe('sizeBucket', () => {
     [500, 2048, 20480, 76800, 200000].forEach(b => {
       expect(BUCKET_ORDER).toContain(sizeBucket(b));
     });
+  });
+
+  test('exact boundary values land in the upper bucket', () => {
+    expect(sizeBucket(1024)).toBe('1–10 KB');        // exactly 1 KB → not '< 1 KB'
+    expect(sizeBucket(10 * 1024)).toBe('10–50 KB');  // exactly 10 KB
+    expect(sizeBucket(50 * 1024)).toBe('50–100 KB'); // exactly 50 KB
+    expect(sizeBucket(100 * 1024)).toBe('> 100 KB'); // exactly 100 KB
+  });
+
+  test('values just below boundaries stay in lower bucket', () => {
+    expect(sizeBucket(1023)).toBe('< 1 KB');
+    expect(sizeBucket(10 * 1024 - 1)).toBe('1–10 KB');
+    expect(sizeBucket(50 * 1024 - 1)).toBe('10–50 KB');
+    expect(sizeBucket(100 * 1024 - 1)).toBe('50–100 KB');
   });
 });
 
@@ -225,6 +245,29 @@ describe('withConcurrency', () => {
   test('handles empty task list', async () => {
     expect(await withConcurrency([], 4)).toEqual([]);
   });
+
+  test('concurrency=1 runs tasks serially (max active is 1)', async () => {
+    let active = 0;
+    let max = 0;
+    const tasks = Array.from({ length: 5 }, () => async () => {
+      active++;
+      max = Math.max(max, active);
+      await new Promise(r => setTimeout(r, 1));
+      active--;
+      return 1;
+    });
+    await withConcurrency(tasks, 1);
+    expect(max).toBe(1);
+  });
+
+  test('propagates rejection when a task throws', async () => {
+    const tasks = [
+      async () => 1,
+      async () => { throw new Error('task failed'); },
+      async () => 3,
+    ];
+    await expect(withConcurrency(tasks, 2)).rejects.toThrow('task failed');
+  });
 });
 
 describe('analyze', () => {
@@ -297,6 +340,32 @@ describe('analyze', () => {
     analyze(files);
     expect(files[0].lines).toBe(3);
   });
+
+  test('file with empty content contributes 0 lines', () => {
+    const files = [{ path: 'a.js', size: 0, content: '' }];
+    const r = analyze(files);
+    expect(r.totalLines).toBe(0);
+    expect(files[0].lines).toBe(0);
+  });
+
+  test('groups unknown extensions under "Other" language', () => {
+    const files = [
+      { path: 'Makefile', size: 100, content: 'all:\n\techo hi' },
+      { path: 'script.xyz', size: 50, content: 'hello' },
+    ];
+    const r = analyze(files);
+    const other = r.languages.find(l => l.lang === 'Other');
+    expect(other).toBeDefined();
+    expect(other.files).toBe(2);
+  });
+
+  test('single file produces correct avgSize and top10', () => {
+    const files = [{ path: 'a.js', size: 2048, content: 'x' }];
+    const r = analyze(files);
+    expect(r.avgSize).toBe(2048);
+    expect(r.top10).toHaveLength(1);
+    expect(r.top10[0].path).toBe('a.js');
+  });
 });
 
 describe('constants', () => {
@@ -368,6 +437,17 @@ describe('tree-sitter language registry', () => {
     expect(groups.get('javascript').files).toHaveLength(1);
     expect(groups.get('typescript').files).toHaveLength(1);
     expect(groups.has('markdown')).toBe(false);
+  });
+
+  test('groupFilesByTsLang returns empty map for empty input', () => {
+    const groups = groupFilesByTsLang([]);
+    expect(groups.size).toBe(0);
+  });
+
+  test('groupFilesByTsLang returns empty map when all files are unsupported', () => {
+    const files = [{ path: 'README.md', size: 1 }, { path: 'Makefile', size: 1 }];
+    const groups = groupFilesByTsLang(files);
+    expect(groups.size).toBe(0);
   });
 });
 

@@ -28,6 +28,12 @@ describe('StatCard', () => {
     render(<StatCard label="Lines" value={1234} />);
     expect(screen.getByText('1234')).toBeInTheDocument();
   });
+
+  test('renders numeric zero value', () => {
+    render(<StatCard label="Errors" value={0} />);
+    expect(screen.getByText('Errors')).toBeInTheDocument();
+    expect(screen.getByText('0')).toBeInTheDocument();
+  });
 });
 
 // ── SectionHeading ────────────────────────────────────────────────────────────
@@ -128,6 +134,33 @@ describe('BarChartCSS', () => {
     );
     const bars = container.querySelectorAll('.bar-chart__fill');
     expect(bars[0].style.width).toBe('100%');
+  });
+
+  test('non-max bars have proportional widths relative to maximum', () => {
+    const { container } = render(
+      <BarChartCSS data={data} valueKey="count" labelKey="name" colors="#000" />
+    );
+    const bars = container.querySelectorAll('.bar-chart__fill');
+    // Python(40) = 50% of JavaScript(80); Go(20) = 25%
+    expect(bars[1].style.width).toBe('50%');
+    expect(bars[2].style.width).toBe('25%');
+  });
+
+  test('renders empty container with no rows when data is empty', () => {
+    const { container } = render(
+      <BarChartCSS data={[]} valueKey="count" labelKey="name" colors="#000" />
+    );
+    expect(container.querySelector('.bar-chart')).toBeInTheDocument();
+    expect(container.querySelectorAll('.bar-chart__row')).toHaveLength(0);
+  });
+
+  test('cycles through array colors by index', () => {
+    const singleItem = [{ name: 'A', count: 10 }];
+    const colors = ['#ff0000', '#00ff00'];
+    const { container } = render(
+      <BarChartCSS data={singleItem} valueKey="count" labelKey="name" colors={colors} />
+    );
+    expect(container.querySelector('.bar-chart__fill').style.backgroundColor).toBe('rgb(255, 0, 0)');
   });
 });
 
@@ -285,6 +318,20 @@ describe('RepoInput', () => {
     fireEvent.mouseDown(screen.getByText('facebook/react'));
     expect(onUrlChange).toHaveBeenCalledWith('https://github.com/facebook/react');
   });
+
+  test('Analyze button is not disabled even when disabled=true (input-only disabling)', () => {
+    render(<RepoInput {...defaultProps} disabled={true} />);
+    expect(screen.getByRole('button', { name: /analyze/i })).not.toBeDisabled();
+  });
+
+  test('no suggestions shown when input has fewer than 2 characters', () => {
+    const repoList = [{ name: 'facebook/react', language: 'JavaScript' }];
+    render(<RepoInput {...defaultProps} repoList={repoList} />);
+    fireEvent.change(screen.getByPlaceholderText(/github\.com\/user\/repo/i), {
+      target: { value: 'f' },
+    });
+    expect(screen.queryByText('facebook/react')).not.toBeInTheDocument();
+  });
 });
 
 // ── LoadingProgress ───────────────────────────────────────────────────────────
@@ -327,6 +374,21 @@ describe('LoadingProgress', () => {
     );
     const bar = container.querySelector('.progress-fill');
     expect(bar.style.width).toBe('0%');
+  });
+
+  test('progress bar is 100% when done equals total', () => {
+    const { container } = render(
+      <LoadingProgress phase="loading" progress={{ done: 10, total: 10 }} onCancel={() => {}} />
+    );
+    const bar = container.querySelector('.progress-fill');
+    expect(bar.style.width).toBe('100%');
+  });
+
+  test('parsing phase shows no progress bar (no progress-fill element)', () => {
+    const { container } = render(
+      <LoadingProgress phase="parsing" progress={{ done: 0, total: 0 }} onCancel={() => {}} />
+    );
+    expect(container.querySelector('.progress-fill')).not.toBeInTheDocument();
   });
 });
 
@@ -485,6 +547,18 @@ describe('Results — language breakdown', () => {
     expect(screen.getByText('30')).toBeInTheDocument();
     expect(screen.getByText('1,000')).toBeInTheDocument();
   });
+
+  test('renders correctly with a single language', async () => {
+    const user = userEvent.setup();
+    const singleLangResult = {
+      ...makeResult(),
+      languages: [{ lang: 'TypeScript', files: 42, lines: 1234, pct: '100.0' }],
+    };
+    render(<Results result={singleLangResult} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
+    await user.click(screen.getByText('Language Breakdown'));
+    expect(screen.getByText('TypeScript')).toBeInTheDocument();
+    expect(screen.queryByText('Python')).not.toBeInTheDocument();
+  });
 });
 
 describe('Results — file size distribution', () => {
@@ -501,6 +575,14 @@ describe('Results — file size distribution', () => {
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
     await user.click(screen.getByText('File Size Distribution'));
     expect(screen.getByText(/average file size/i)).toBeInTheDocument();
+  });
+
+  test('renders correctly when top10 has fewer than 10 files', async () => {
+    const user = userEvent.setup();
+    const smallResult = { ...makeResult(), top10: [{ path: 'only.js', size: 512 }] };
+    render(<Results result={smallResult} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
+    await user.click(screen.getByText('File Size Distribution'));
+    expect(screen.getByText('only.js')).toBeInTheDocument();
   });
 });
 
