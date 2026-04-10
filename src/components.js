@@ -27,9 +27,9 @@
 
   function StatCard({ label, value }) {
     return (
-      <div className="bg-white rounded-xl p-4 flex flex-col gap-1 shadow-sm border border-gray-200">
-        <span className="text-xs text-gray-500 uppercase tracking-wide">{label}</span>
-        <span className="text-2xl font-bold text-gray-800">{value}</span>
+      <div className="stat-card">
+        <span className="stat-card__label">{label}</span>
+        <span className="stat-card__value">{value}</span>
       </div>
     );
   }
@@ -37,7 +37,7 @@
   // ── SectionHeading ─────────────────────────────────────────────────────────
 
   function SectionHeading({ children }) {
-    return <h2 className="text-lg font-semibold text-gray-900 mb-3 mt-6">{children}</h2>;
+    return <h2 className="section-heading">{children}</h2>;
   }
 
   // ── Section ────────────────────────────────────────────────────────────────
@@ -49,10 +49,10 @@
         <button
           type="button"
           onClick={() => setOpen(o => !o)}
-          className="w-full flex items-center gap-2 text-lg font-semibold text-gray-900 mb-3 mt-6 focus:outline-none group"
+          className="section-toggle"
           aria-expanded={open}
         >
-          <span className={`inline-block transition-transform duration-200 text-gray-400 group-hover:text-gray-700 ${open ? 'rotate-90' : ''}`}>▶</span>
+          <span className={`section-arrow${open ? ' open' : ''}`}>▶</span>
           <span>{title}</span>
         </button>
         {open && <div>{children}</div>}
@@ -65,20 +65,20 @@
   function BarChartCSS({ data, valueKey, labelKey, colors, formatValue }) {
     const max = Math.max(...data.map(d => d[valueKey]), 1);
     return (
-      <div className="space-y-2">
+      <div className="bar-chart">
         {data.map((d, i) => (
-          <div key={d[labelKey]} className="flex items-center gap-2 text-xs">
-            <span className="w-24 text-right text-gray-500 truncate flex-shrink-0">{d[labelKey]}</span>
-            <div className="flex-1 bg-gray-200 rounded-full h-4 overflow-hidden">
+          <div key={d[labelKey]} className="bar-chart__row">
+            <span className="bar-chart__label">{d[labelKey]}</span>
+            <div className="bar-chart__track">
               <div
-                className="h-4 rounded-full transition-all duration-500"
+                className="bar-chart__fill"
                 style={{
                   width: `${(d[valueKey] / max) * 100}%`,
                   backgroundColor: Array.isArray(colors) ? colors[i % colors.length] : colors,
                 }}
               />
             </div>
-            <span className="w-20 text-gray-600 flex-shrink-0">{formatValue ? formatValue(d[valueKey]) : d[valueKey].toLocaleString()}</span>
+            <span className="bar-chart__value">{formatValue ? formatValue(d[valueKey]) : d[valueKey].toLocaleString()}</span>
           </div>
         ))}
       </div>
@@ -89,12 +89,12 @@
 
   function TopBar({ onHome }) {
     return (
-      <div className="flex items-center gap-2 mb-12">
+      <div className="top-bar">
         <button
           onClick={onHome}
           title="Home"
           aria-label="Home"
-          className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 hover:text-accent rounded-lg px-3 py-2 shadow-sm transition-colors text-sm font-medium"
+          className="top-bar-btn"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 12L12 3l9 9" />
@@ -107,7 +107,7 @@
           target="_blank"
           rel="noopener noreferrer"
           title="ghminer on GitHub"
-          className="inline-flex items-center gap-2 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 hover:text-accent rounded-lg px-3 py-2 shadow-sm transition-colors text-sm font-medium"
+          className="top-bar-btn"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
             <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.69-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.71.08-.71 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.05 11.05 0 0 1 5.79 0c2.21-1.49 3.18-1.18 3.18-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.69 5.41-5.25 5.69.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56C20.71 21.39 24 17.08 24 12 24 5.65 18.85.5 12 .5z" />
@@ -122,11 +122,11 @@
 
   function Header() {
     return (
-      <div className="mb-8 text-center">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-gray-900 tracking-tight">
-          <span className="text-accent">gh</span>miner
+      <div className="app-header">
+        <h1 className="app-header__title">
+          <span className="accent">gh</span>miner
         </h1>
-        <p className="text-gray-500 text-base mt-2">Analyze GitHub repositories</p>
+        <p className="app-header__tagline">Analyze GitHub repositories</p>
       </div>
     );
   }
@@ -145,11 +145,11 @@
     };
 
     return (
-      <div className="w-full max-w-2xl mb-6">
-        <div className="flex gap-2 relative">
-          <div className="flex-1 relative">
+      <div className="repo-input">
+        <div className="repo-input__row">
+          <div className="repo-input__field-wrap">
             <input
-              className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-gray-500 focus:ring-1 focus:ring-gray-500"
+              className="repo-input__field"
               placeholder="https://github.com/user/repo"
               value={url}
               onChange={e => {
@@ -173,18 +173,18 @@
               disabled={disabled}
             />
             {suggestions.length > 0 && (
-              <ul ref={suggestionsRef} className="absolute z-10 left-0 right-0 top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden text-sm">
+              <ul ref={suggestionsRef} className="autocomplete">
                 {suggestions.map((s, i) => (
                   <li
                     key={s.name}
-                    className={`px-4 py-2 cursor-pointer font-mono text-xs flex items-center justify-between gap-3 ${i === suggestionIndex ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'}`}
+                    className={`autocomplete__item${i === suggestionIndex ? ' active' : ''}`}
                     onMouseDown={() => selectSuggestion(s.name)}
                   >
                     <span>{s.name}</span>
                     {s.language && (
-                      <span className="text-gray-400 font-sans flex-shrink-0 inline-flex items-center gap-1.5">
+                      <span className="autocomplete__lang">
                         {s.language}
-                        <LangIcon name={s.language} className="text-base" />
+                        <LangIcon name={s.language} className="icon-base" />
                       </span>
                     )}
                   </li>
@@ -192,14 +192,9 @@
               </ul>
             )}
           </div>
-          <button
-            onClick={onSubmit}
-            className="bg-gray-900 hover:bg-gray-800 text-white font-medium px-5 py-2.5 rounded-lg text-sm transition-colors"
-          >
-            Analyze
-          </button>
+          <button onClick={onSubmit} className="btn-primary">Analyze</button>
         </div>
-        {error && <p className="text-red-400 text-xs mt-2 ml-1">{error}</p>}
+        {error && <p className="repo-input__error">{error}</p>}
       </div>
     );
   }
@@ -208,25 +203,23 @@
 
   function LoadingProgress({ phase, progress, onCancel }) {
     return (
-      <div className="w-full max-w-md flex flex-col items-center gap-4 mt-16">
+      <div className="loading">
         {phase === 'loading' ? (
           <>
-            <p className="text-gray-700 text-sm">
+            <p className="loading__text">
               Fetching {progress.done.toLocaleString()} / {progress.total.toLocaleString()} files…
             </p>
-            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+            <div className="progress-track">
               <div
-                className="bg-accent h-2.5 rounded-full transition-all duration-200"
+                className="progress-fill"
                 style={{ width: progress.total > 0 ? `${(progress.done / progress.total) * 100}%` : '0%' }}
               />
             </div>
           </>
         ) : (
-          <p className="text-gray-700 text-sm">Parsing source files with tree-sitter…</p>
+          <p className="loading__text">Parsing source files with tree-sitter…</p>
         )}
-        <button onClick={onCancel} className="text-gray-500 hover:text-gray-900 text-sm transition-colors">
-          Cancel
-        </button>
+        <button onClick={onCancel} className="btn-cancel">Cancel</button>
       </div>
     );
   }
@@ -348,21 +341,6 @@
 
     const bucketData = BUCKET_ORDER.map(b => ({ name: b, count: buckets[b] || 0 }));
 
-    const highlight = (text, q) => {
-      if (!q) return text;
-      const lower = text.toLowerCase();
-      const parts = [];
-      let i = 0;
-      while (i < text.length) {
-        const idx = lower.indexOf(q, i);
-        if (idx === -1) { parts.push(text.slice(i)); break; }
-        if (idx > i) parts.push(text.slice(i, idx));
-        parts.push(<mark key={idx} className="bg-yellow-200 text-gray-900 rounded px-0.5">{text.slice(idx, idx + q.length)}</mark>);
-        i = idx + q.length;
-      }
-      return parts;
-    };
-
     const HLJS_LANG = { javascript: 'javascript', typescript: 'typescript', tsx: 'typescript', python: 'python' };
 
     const highlightCode = (code, langId, query) => {
@@ -394,7 +372,7 @@
         while (idx !== -1) {
           if (idx > i) frag.appendChild(document.createTextNode(text.slice(i, idx)));
           const mark = document.createElement('mark');
-          mark.className = 'bg-yellow-200 text-gray-900 rounded px-0.5';
+          mark.className = 'hl-match';
           mark.textContent = text.slice(idx, idx + query.length);
           frag.appendChild(mark);
           i = idx + query.length;
@@ -419,24 +397,24 @@
     }, [tsNodes, debouncedQuery]);
 
     return (
-      <div className="w-full max-w-4xl mx-auto pb-16 bg-gray-50 rounded-xl p-6">
+      <div className="results">
         {repoInfo && (
-          <div className="mb-4 flex items-center gap-3">
-            <LangIcon name={repoInfo.user} className="text-3xl" />
+          <div className="results__repo-header">
+            <LangIcon name={repoInfo.user} className="icon-lg" />
             <a
               href={`https://github.com/${repoInfo.user}/${repoInfo.repo}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xl font-semibold text-gray-800 hover:text-accent transition-colors"
+              className="results__repo-link"
             >
-              <span className="text-gray-500">{repoInfo.user}</span>
-              <span className="text-gray-400 mx-1">/</span>
+              <span className="repo-user">{repoInfo.user}</span>
+              <span className="repo-sep">/</span>
               <span>{repoInfo.repo}</span>
             </a>
           </div>
         )}
         <Section title="Overview" defaultOpen={false}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="stat-grid">
             <StatCard label="Files" value={totalFiles.toLocaleString()} />
             <StatCard label="Lines of Code" value={totalLines.toLocaleString()} />
             <StatCard label="Total Size" value={formatSize(totalSize)} />
@@ -445,26 +423,26 @@
         </Section>
 
         <Section title="Language Breakdown" defaultOpen={false}>
-          <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
-            <table className="w-full text-sm">
+          <div className="panel">
+            <table className="data-table">
               <thead>
-                <tr className="text-gray-500 text-xs uppercase border-b border-gray-200 bg-gray-50">
-                  <th className="text-left px-4 py-3">Language</th>
-                  <th className="text-right px-4 py-3">Files</th>
-                  <th className="text-right px-4 py-3">Lines</th>
-                  <th className="text-right px-4 py-3">%</th>
+                <tr>
+                  <th>Language</th>
+                  <th className="col-right">Files</th>
+                  <th className="col-right">Lines</th>
+                  <th className="col-right">%</th>
                 </tr>
               </thead>
               <tbody>
                 {languages.map((l) => (
-                  <tr key={l.lang} className="border-b border-gray-100 hover:bg-gray-50/60">
-                    <td className="px-4 py-2 flex items-center gap-2 text-gray-700">
-                      <LangIcon name={l.lang} className="text-base flex-shrink-0 w-4 text-center" />
+                  <tr key={l.lang} className="data-table__row">
+                    <td className="data-table__cell-lang">
+                      <LangIcon name={l.lang} className="icon-cell" />
                       {l.lang}
                     </td>
-                    <td className="text-right px-4 py-2 text-gray-600">{l.files.toLocaleString()}</td>
-                    <td className="text-right px-4 py-2 text-gray-600">{l.lines.toLocaleString()}</td>
-                    <td className="text-right px-4 py-2 text-gray-500">{l.pct}%</td>
+                    <td className="data-table__cell text-right">{l.files.toLocaleString()}</td>
+                    <td className="data-table__cell text-right">{l.lines.toLocaleString()}</td>
+                    <td className="data-table__cell text-right">{l.pct}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -473,9 +451,9 @@
         </Section>
 
         <Section title="File Size Distribution" defaultOpen={false}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <p className="text-xs text-gray-500 mb-3">Files by size bucket</p>
+          <div className="two-col-grid">
+            <div className="panel-padded">
+              <p className="panel-label">Files by size bucket</p>
               <BarChartCSS
                 data={bucketData}
                 valueKey="count"
@@ -484,16 +462,16 @@
                 formatValue={v => `${v} files`}
               />
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-              <p className="text-xs text-gray-500 mb-3">Average file size: <span className="text-gray-800 font-medium">{formatSize(avgSize)}</span></p>
-              <p className="text-xs text-gray-500 mb-2">Largest files (top 10)</p>
-              <ol className="space-y-1">
+            <div className="panel-padded">
+              <p className="panel-label">Average file size: <strong>{formatSize(avgSize)}</strong></p>
+              <p className="panel-label">Largest files (top 10)</p>
+              <ol className="file-list">
                 {top10.map((f, i) => (
-                  <li key={f.path} className="flex justify-between text-xs">
-                    <span className="text-gray-700 truncate max-w-[70%]" title={f.path}>
-                      <span className="text-gray-400 mr-1">{i + 1}.</span>{f.path.split('/').pop()}
+                  <li key={f.path} className="file-list__item">
+                    <span className="file-list__name" title={f.path}>
+                      <span className="file-list__rank">{i + 1}.</span>{f.path.split('/').pop()}
                     </span>
-                    <span className="text-gray-500 ml-2 flex-shrink-0">{formatSize(f.size)}</span>
+                    <span className="file-list__size">{formatSize(f.size)}</span>
                   </li>
                 ))}
               </ol>
@@ -502,15 +480,15 @@
         </Section>
 
         {tsError && (
-          <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-            <p className="text-yellow-700 text-sm">{tsError}</p>
+          <div className="alert-warning">
+            <p className="alert-warning__text">{tsError}</p>
           </div>
         )}
 
         {tsResults.length > 0 && (
           <Section title="AST Node Types (tree-sitter)">
             {tsResults.length > 1 && (
-              <div className="flex flex-wrap gap-1.5 mb-3">
+              <div className="lang-tabs">
                 {tsResults.map(r => {
                   const active = r.id === activeLang?.id;
                   return (
@@ -518,43 +496,40 @@
                       key={r.id}
                       type="button"
                       onClick={() => setActiveLangId(r.id)}
-                      className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors inline-flex items-center gap-1.5 ${active
-                        ? 'bg-slate-700 text-white border-slate-700 hover:bg-slate-800'
-                        : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                        }`}
+                      className={`lang-tab${active ? ' active' : ''}`}
                     >
-                      <LangIcon name={r.label} className="text-sm" />
-                      {r.label} <span className={active ? 'text-slate-300' : 'text-slate-400'}>({r.fileCount})</span>
+                      <LangIcon name={r.label} className="icon-xs" />
+                      {r.label} <span className="tab-count">({r.fileCount})</span>
                     </button>
                   );
                 })}
               </div>
             )}
             {activeLangError && (
-              <div className="mb-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
-                <p className="text-yellow-700 text-xs">Failed to parse {activeLang.label}: {activeLangError}</p>
+              <div className="alert-warning compact">
+                <p className="alert-warning__text small">Failed to parse {activeLang.label}: {activeLangError}</p>
               </div>
             )}
             {tsNodes.length === 0 ? (
-              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 text-xs text-gray-400">
+              <div className="panel-empty">
                 No nodes parsed for {activeLang?.label}.
               </div>
             ) : (
               <>
                 <div
                   onClick={() => nodeInputRef.current && nodeInputRef.current.focus()}
-                  className="relative w-full bg-white border border-gray-300 rounded-lg pl-2 pr-4 py-1.5 text-sm flex items-center gap-1.5 focus-within:border-gray-500 focus-within:ring-1 focus-within:ring-gray-500 cursor-text"
+                  className="node-filter"
                 >
                   {badgeTypes.map((bt, idx) => (
                     <span
                       key={idx}
-                      className={`flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-[11px] font-mono flex-shrink-0 ${customNodeTypes.has(bt) ? 'bg-amber-500 text-white' : 'bg-indigo-600 text-white'}`}
+                      className={`node-badge ${customNodeTypes.has(bt) ? 'custom' : 'builtin'}`}
                     >
                       {bt}
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); removeBadge(idx); }}
-                        className="w-3.5 h-3.5 flex items-center justify-center rounded-full hover:bg-white/25 leading-none text-[11px]"
+                        className="node-badge__remove"
                         aria-label="Remove node type filter"
                       >
                         ×
@@ -575,33 +550,30 @@
                       setNodeSugIndex(-1);
                     }, 150)}
                     placeholder={badgeTypes.length > 0 ? 'Filter text or type / to add another node type…' : 'Search text or type / to filter by node type…'}
-                    className="flex-1 min-w-0 bg-transparent text-gray-800 placeholder-gray-400 focus:outline-none px-1 py-0.5"
+                    className="node-filter__input"
                   />
                   {typeSuggestions.length > 0 && (
-                    <ul
-                      ref={nodeSugRef}
-                      className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-auto max-h-64 text-sm"
-                    >
+                    <ul ref={nodeSugRef} className="node-suggestions">
                       {typeSuggestions.map((s, i) => (
                         <li
                           key={s.type}
-                          className={`px-3 py-1.5 cursor-pointer font-mono text-xs flex items-center justify-between gap-3 ${i === nodeSugIndex ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'}`}
+                          className={`node-suggestion${i === nodeSugIndex ? ' active' : ''}`}
                           onMouseDown={() => selectNodeSuggestion(s.type)}
                         >
-                          <span className="flex items-center gap-2">
-                            <span className={`text-[10px] ${s.custom ? 'text-amber-500' : 'text-gray-400'}`}>/</span>
+                          <span className="node-suggestion__label">
+                            <span className={`node-suggestion__prefix${s.custom ? ' custom' : ''}`}>/</span>
                             {s.type}
-                            {s.custom && <span className="text-[9px] font-sans font-medium bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full leading-none">custom</span>}
+                            {s.custom && <span className="custom-tag">custom</span>}
                           </span>
-                          <span className="text-gray-400 text-[10px]">{s.count}</span>
+                          <span className="node-suggestion__count">{s.count}</span>
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
                 {customNodes.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className="text-[10px] font-medium text-amber-600">Custom Nodes:</span>
+                  <div className="node-type-row top">
+                    <span className="node-type-label custom">Custom Nodes:</span>
                     {customNodes.map(n => {
                       const active = badgeTypes.some(bt => bt.toLowerCase() === n.type.toLowerCase());
                       return (
@@ -619,10 +591,7 @@
                             }
                             if (nodeInputRef.current) nodeInputRef.current.focus();
                           }}
-                          className={`px-2 py-0.5 text-[10px] font-mono rounded-full border transition-colors ${active
-                            ? 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600'
-                            : 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
-                            }`}
+                          className={`node-pill custom${active ? ' active' : ''}`}
                           title={`Custom: ${n.node} containing "${n.substring}"`}
                         >
                           {n.type}
@@ -631,8 +600,8 @@
                     })}
                   </div>
                 )}
-                <div className="flex flex-wrap items-center gap-1.5 mt-1.5 mb-3">
-                  <span className="text-[10px] font-medium text-indigo-600">Language Nodes:</span>
+                <div className="node-type-row bottom">
+                  <span className="node-type-label builtin">Language Nodes:</span>
                   {topNodeTypes.map(t => {
                     const active = badgeTypes.some(bt => bt.toLowerCase() === t.toLowerCase());
                     return (
@@ -650,10 +619,7 @@
                           }
                           if (nodeInputRef.current) nodeInputRef.current.focus();
                         }}
-                        className={`px-2 py-0.5 text-[10px] font-mono rounded-full border transition-colors ${active
-                          ? 'bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700'
-                          : 'bg-indigo-50 text-indigo-600 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300'
-                          }`}
+                        className={`node-pill builtin${active ? ' active' : ''}`}
                       >
                         {t}
                       </button>
@@ -663,19 +629,19 @@
                     <button
                       type="button"
                       onClick={() => setShowAllTypes(s => !s)}
-                      className="px-2 py-0.5 text-[10px] font-mono rounded-full border border-gray-300 bg-white text-accent hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                      className="node-pill more"
                     >
                       {showAllTypes ? '− less' : `+ ${hiddenCount} more`}
                     </button>
                   )}
                 </div>
-                <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-200">
-                  <table className="w-full text-sm table-fixed">
+                <div className="panel">
+                  <table className="data-table node-table">
                     <thead>
-                      <tr className="text-gray-500 text-xs uppercase border-b border-gray-200 bg-gray-50">
-                        <th className="text-left px-4 py-3 w-56">Node Type</th>
-                        <th className="text-right px-4 py-3 w-24">Count</th>
-                        <th className="text-left px-4 py-3">{debouncedQuery.trim() ? 'Results' : 'Examples'}</th>
+                      <tr>
+                        <th className="col-type">Node Type</th>
+                        <th className="col-right col-count">Count</th>
+                        <th>{debouncedQuery.trim() ? 'Results' : 'Examples'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -690,19 +656,19 @@
                         const uniqueShown = new Set(items.map(it => `${it.file || ''}\0${it.text || ''}`)).size;
                         const isCustom = custom || customNodeTypes.has(type);
                         return (
-                          <tr key={type} className={`border-b border-gray-100 align-top ${isCustom ? 'hover:bg-amber-50/60' : 'hover:bg-gray-50/60'}`}>
-                            <td className={`px-4 py-2 font-mono text-xs break-all ${isCustom ? 'text-violet-700' : 'text-gray-700'}`}>
+                          <tr key={type} className={`data-table__row${isCustom ? ' custom' : ''}`}>
+                            <td className={`data-table__cell-type${isCustom ? ' custom' : ''}`}>
                               {type}
-                              {isCustom && <span className="ml-1.5 text-[9px] font-sans text-amber-500 bg-amber-50 border border-amber-100 rounded-full px-1.5 py-px align-middle">custom</span>}
+                              {isCustom && <span className="custom-badge">custom</span>}
                             </td>
-                            <td className="text-right px-4 py-2 text-gray-600">{displayCount.toLocaleString()}</td>
-                            <td className="px-4 py-2 font-mono text-gray-600 text-xs">
+                            <td className="data-table__cell text-right">{displayCount.toLocaleString()}</td>
+                            <td className="data-table__cell">
                               {truncated && (
-                                <div className="text-[10px] text-gray-400 mb-1">
+                                <div className="node-match-info">
                                   Showing first {uniqueShown.toLocaleString()} of {matches.toLocaleString()} matches
                                 </div>
                               )}
-                              <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                              <div className="node-items">
                                 {(() => {
                                   const groups = [];
                                   const idx = new Map();
@@ -718,22 +684,22 @@
                                   }
                                   groups.sort((a, b) => b.texts.length - a.texts.length);
                                   return groups.map((g, gi) => (
-                                    <div key={gi} className="py-2 first:pt-0 last:pb-0">
+                                    <div key={gi} className="node-group">
                                       {g.file && (
-                                        <div className="flex items-center gap-1.5 mb-1.5">
-                                          <span className="text-gray-700 text-[10px] font-semibold truncate" title={g.file}>{g.file}</span>
+                                        <div className="node-group__header">
+                                          <span className="node-group__file" title={g.file}>{g.file}</span>
                                           {g.texts.length > 1 && (
-                                            <span className="text-[9px] text-gray-500 bg-gray-100 border border-gray-200 rounded-full px-1.5 py-px flex-shrink-0">{g.texts.length}</span>
+                                            <span className="node-group__count">{g.texts.length}</span>
                                           )}
                                         </div>
                                       )}
-                                      <div className="flex flex-col gap-1">
+                                      <div className="node-group__texts">
                                         {g.texts.map((text, ti) => {
                                           const truncated = text.length > 200 ? text.slice(0, 200) + '…' : text;
                                           return (
                                             <pre
                                               key={ti}
-                                              className="hljs whitespace-pre-wrap break-all border border-gray-200 rounded px-2 py-1 font-mono"
+                                              className="code-preview hljs"
                                               title={text}
                                               dangerouslySetInnerHTML={{ __html: highlightCode(truncated, activeLang?.id, q) }}
                                             />
@@ -750,7 +716,7 @@
                       })}
                       {filteredNodes.length === 0 && (
                         <tr>
-                          <td colSpan="3" className="px-4 py-4 text-center text-xs text-gray-400">No matches</td>
+                          <td colSpan="3" className="table-empty">No matches</td>
                         </tr>
                       )}
                     </tbody>
@@ -762,17 +728,17 @@
         )}
 
         {errors.length > 0 && !errorsDismissed && (
-          <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 relative">
+          <div className="alert-error">
             <button
               onClick={() => setErrorsDismissed(true)}
               aria-label="Dismiss"
-              className="absolute top-2 right-2 text-red-400 hover:text-red-600 text-lg leading-none px-2 py-0.5"
+              className="alert-error__dismiss"
             >
               ×
             </button>
-            <p className="text-red-600 text-sm font-medium mb-2 pr-6">Failed to fetch {errors.length} file(s):</p>
-            <ul className="text-xs text-red-400 space-y-0.5 max-h-32 overflow-y-auto">
-              {errors.map(e => <li key={e} className="font-mono">{e}</li>)}
+            <p className="alert-error__title">Failed to fetch {errors.length} file(s):</p>
+            <ul className="alert-error__list">
+              {errors.map(e => <li key={e}>{e}</li>)}
             </ul>
           </div>
         )}

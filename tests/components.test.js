@@ -126,7 +126,7 @@ describe('BarChartCSS', () => {
     const { container } = render(
       <BarChartCSS data={data} valueKey="count" labelKey="name" colors="#000" />
     );
-    const bars = container.querySelectorAll('.h-4.rounded-full.transition-all');
+    const bars = container.querySelectorAll('.bar-chart__fill');
     expect(bars[0].style.width).toBe('100%');
   });
 });
@@ -317,7 +317,7 @@ describe('LoadingProgress', () => {
     const { container } = render(
       <LoadingProgress phase="loading" progress={{ done: 5, total: 10 }} onCancel={() => {}} />
     );
-    const bar = container.querySelector('.bg-accent');
+    const bar = container.querySelector('.progress-fill');
     expect(bar.style.width).toBe('50%');
   });
 
@@ -325,7 +325,7 @@ describe('LoadingProgress', () => {
     const { container } = render(
       <LoadingProgress phase="loading" progress={{ done: 0, total: 0 }} onCancel={() => {}} />
     );
-    const bar = container.querySelector('.bg-accent');
+    const bar = container.querySelector('.progress-fill');
     expect(bar.style.width).toBe('0%');
   });
 });
@@ -355,7 +355,7 @@ describe('RepoInput keyboard navigation', () => {
     fireEvent.change(input, { target: { value: 'face' } });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     const items = screen.getAllByRole('listitem');
-    expect(items[0].className).toContain('bg-gray-100');
+    expect(items[0].className).toContain('active');
   });
 
   test('ArrowUp at top does not highlight any item', () => {
@@ -365,7 +365,7 @@ describe('RepoInput keyboard navigation', () => {
     fireEvent.change(input, { target: { value: 'face' } });
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     const items = screen.getAllByRole('listitem');
-    expect(items[0].className).not.toContain('bg-gray-100');
+    expect(items[0].className).not.toContain('active');
   });
 
   test('Enter with highlighted suggestion selects it', () => {
@@ -392,7 +392,7 @@ describe('RepoInput keyboard navigation', () => {
 
 // ── Results ───────────────────────────────────────────────────────────────────
 
-const makeResult = (overrides = {}) => ({
+const makeResult = () => ({
   totalFiles: 42,
   totalLines: 1234,
   totalSize: 56789,
@@ -406,7 +406,6 @@ const makeResult = (overrides = {}) => ({
     { path: 'src/utils.js', size: 5120 },
   ],
   buckets: { '< 1 KB': 10, '1–10 KB': 20, '10–50 KB': 8, '50–100 KB': 2, '> 100 KB': 1 },
-  ...overrides,
 });
 
 const makeNodes = (overrides = []) => [
@@ -544,6 +543,8 @@ describe('Results — tsError', () => {
 });
 
 describe('Results — AST section', () => {
+  afterEach(() => jest.useRealTimers());
+
   test('shows AST section when tsResults has data', () => {
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={makeTsResults()} tsError="" />);
     expect(screen.getByText(/AST Node Types/i)).toBeInTheDocument();
@@ -580,7 +581,6 @@ describe('Results — AST section', () => {
     await user.type(input, 'xyznotfound');
     act(() => jest.runAllTimers());
     expect(screen.getByText('No matches')).toBeInTheDocument();
-    jest.useRealTimers();
   });
 
   test('shows "No nodes parsed" when nodes array is empty', () => {
@@ -631,6 +631,14 @@ describe('Results — AST language tabs', () => {
 });
 
 describe('Results — AST node type badges', () => {
+  const OVER_THRESHOLD_NODES = Array.from({ length: 20 }, (_, i) => ({
+    type: `node_type_${i}`,
+    typeLower: `node_type_${i}`,
+    count: i + 1,
+    sources: [{ text: `example ${i}`, textLower: `example ${i}`, file: 'src/a.js' }],
+    custom: false,
+  }));
+
   test('clicking a Language Node button adds it as a badge filter', async () => {
     const user = userEvent.setup();
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={makeTsResults()} tsError="" />);
@@ -640,28 +648,14 @@ describe('Results — AST node type badges', () => {
   });
 
   test('show more/less button appears when node types exceed 15', () => {
-    const manyNodes = Array.from({ length: 20 }, (_, i) => ({
-      type: `node_type_${i}`,
-      typeLower: `node_type_${i}`,
-      count: i + 1,
-      sources: [{ text: `example ${i}`, textLower: `example ${i}`, file: 'src/a.js' }],
-      custom: false,
-    }));
-    const tsResults = [{ id: 'javascript', label: 'JavaScript', fileCount: 10, nodes: manyNodes, error: '' }];
+    const tsResults = [{ id: 'javascript', label: 'JavaScript', fileCount: 10, nodes: OVER_THRESHOLD_NODES, error: '' }];
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={tsResults} tsError="" />);
     expect(screen.getByRole('button', { name: /\+ \d+ more/ })).toBeInTheDocument();
   });
 
   test('clicking show more expands all node type buttons', async () => {
     const user = userEvent.setup();
-    const manyNodes = Array.from({ length: 20 }, (_, i) => ({
-      type: `node_type_${i}`,
-      typeLower: `node_type_${i}`,
-      count: i + 1,
-      sources: [{ text: `example ${i}`, textLower: `example ${i}`, file: 'src/a.js' }],
-      custom: false,
-    }));
-    const tsResults = [{ id: 'javascript', label: 'JavaScript', fileCount: 10, nodes: manyNodes, error: '' }];
+    const tsResults = [{ id: 'javascript', label: 'JavaScript', fileCount: 10, nodes: OVER_THRESHOLD_NODES, error: '' }];
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={tsResults} tsError="" />);
     await user.click(screen.getByRole('button', { name: /\+ \d+ more/ }));
     expect(screen.getByRole('button', { name: /− less/ })).toBeInTheDocument();
@@ -681,6 +675,8 @@ describe('RepoInput blur', () => {
     repoList: [{ name: 'facebook/react', language: 'JavaScript' }],
   };
 
+  afterEach(() => jest.useRealTimers());
+
   test('blurring the input closes the suggestion list after 150 ms', async () => {
     jest.useFakeTimers();
     render(<RepoInput {...defaultProps} />);
@@ -690,7 +686,6 @@ describe('RepoInput blur', () => {
     fireEvent.blur(input);
     act(() => jest.runAllTimers());
     expect(screen.queryByText('facebook/react')).not.toBeInTheDocument();
-    jest.useRealTimers();
   });
 });
 
@@ -707,6 +702,10 @@ const nodeResultProps = () => ({
 describe('Results — AST node type / suggestions', () => {
   beforeAll(() => {
     Element.prototype.scrollIntoView = jest.fn();
+  });
+
+  afterAll(() => {
+    delete Element.prototype.scrollIntoView;
   });
 
   test('typing / opens the node type suggestion dropdown', () => {
@@ -739,7 +738,7 @@ describe('Results — AST node type / suggestions', () => {
     const input = screen.getByPlaceholderText(/search text or type/i);
     fireEvent.change(input, { target: { value: '/' } });
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(screen.getAllByRole('listitem')[0].className).toContain('bg-gray-100');
+    expect(screen.getAllByRole('listitem')[0].className).toContain('active');
   });
 
   test('ArrowUp at index -1 does not highlight any item', () => {
@@ -747,7 +746,7 @@ describe('Results — AST node type / suggestions', () => {
     const input = screen.getByPlaceholderText(/search text or type/i);
     fireEvent.change(input, { target: { value: '/' } });
     fireEvent.keyDown(input, { key: 'ArrowUp' });
-    expect(screen.getAllByRole('listitem')[0].className).not.toContain('bg-gray-100');
+    expect(screen.getAllByRole('listitem')[0].className).not.toContain('active');
   });
 
   test('Enter with a highlighted suggestion selects it and adds a badge', () => {
@@ -859,6 +858,8 @@ describe('Results — AST custom nodes', () => {
 // ── Results — AST search text highlighting ────────────────────────────────────
 
 describe('Results — AST search text highlighting', () => {
+  afterEach(() => jest.useRealTimers());
+
   test('searching text that matches a source wraps it in a <mark> element', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -867,7 +868,6 @@ describe('Results — AST search text highlighting', () => {
     await user.type(input, 'foo');
     act(() => jest.runAllTimers());
     expect(container.querySelector('mark')).toBeInTheDocument();
-    jest.useRealTimers();
   });
 });
 
