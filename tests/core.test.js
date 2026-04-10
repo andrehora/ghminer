@@ -15,7 +15,10 @@ const {
   groupFilesByTsLang,
   parseHierarchicalQuery,
   applyTsNodeFilter,
-} = require('../core.js');
+  langIcon,
+  escapeHtml,
+  summarizeNodes,
+} = require('../src/core.js');
 
 describe('parseRepoUrl', () => {
   const expected = { user: 'facebook', repo: 'react' };
@@ -556,5 +559,128 @@ describe('applyTsNodeFilter', () => {
     const results = applyTsNodeFilter(tsNodes, ['function_declaration', 'identifier'], '', 10);
     const texts = results[0].items.map(i => i.text);
     expect(texts).not.toContain('orphan');
+  });
+});
+
+// ── langIcon ──────────────────────────────────────────────────────────────────
+
+describe('langIcon', () => {
+  test('returns null for falsy input', () => {
+    expect(langIcon(null)).toBeNull();
+    expect(langIcon(undefined)).toBeNull();
+    expect(langIcon('')).toBeNull();
+    expect(langIcon(0)).toBeNull();
+  });
+
+  test('maps plain language names to devicon class', () => {
+    expect(langIcon('JavaScript')).toBe('devicon-javascript-plain colored');
+    expect(langIcon('Python')).toBe('devicon-python-plain colored');
+    expect(langIcon('Go')).toBe('devicon-go-plain colored');
+    expect(langIcon('Rust')).toBe('devicon-rust-plain colored');
+  });
+
+  test('is case-insensitive', () => {
+    expect(langIcon('PYTHON')).toBe('devicon-python-plain colored');
+    expect(langIcon('TypeScript')).toBe('devicon-typescript-plain colored');
+  });
+
+  test('applies alias table for names that need special slugs', () => {
+    expect(langIcon('c/c++')).toBe('devicon-cplusplus-plain colored');
+    expect(langIcon('C#')).toBe('devicon-csharp-plain colored');
+    expect(langIcon('tsx')).toBe('devicon-typescript-plain colored');
+    expect(langIcon('shell')).toBe('devicon-bash-plain colored');
+    expect(langIcon('vue')).toBe('devicon-vuejs-plain colored');
+    expect(langIcon('html')).toBe('devicon-html5-plain colored');
+    expect(langIcon('css')).toBe('devicon-css3-plain colored');
+    expect(langIcon('aws')).toBe('devicon-amazonwebservices-plain colored');
+  });
+
+  test('strips non-alphanumeric chars for unaliased names', () => {
+    // e.g. "Svelte" → slug "svelte"
+    expect(langIcon('Svelte')).toBe('devicon-svelte-plain colored');
+    // "rust_lang" is aliased
+    expect(langIcon('rust_lang')).toBe('devicon-rust-plain colored');
+  });
+
+  test('returns null when name reduces to empty slug', () => {
+    // A string of only special chars collapses to ''
+    expect(langIcon('---')).toBeNull();
+    expect(langIcon('!!!')).toBeNull();
+  });
+});
+
+// ── escapeHtml ────────────────────────────────────────────────────────────────
+
+describe('escapeHtml', () => {
+  test('escapes all five special characters', () => {
+    expect(escapeHtml('&')).toBe('&amp;');
+    expect(escapeHtml('<')).toBe('&lt;');
+    expect(escapeHtml('>')).toBe('&gt;');
+    expect(escapeHtml('"')).toBe('&quot;');
+    expect(escapeHtml("'")).toBe('&#39;');
+  });
+
+  test('escapes mixed content', () => {
+    expect(escapeHtml('<script>alert("xss")</script>')).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
+    expect(escapeHtml("it's a <b>test</b> & more")).toBe('it&#39;s a &lt;b&gt;test&lt;/b&gt; &amp; more');
+  });
+
+  test('leaves strings with no special chars unchanged', () => {
+    expect(escapeHtml('hello world')).toBe('hello world');
+    expect(escapeHtml('')).toBe('');
+    expect(escapeHtml('abc123')).toBe('abc123');
+  });
+
+  test('handles multiple occurrences of the same char', () => {
+    expect(escapeHtml('a & b & c')).toBe('a &amp; b &amp; c');
+    expect(escapeHtml('<<<')).toBe('&lt;&lt;&lt;');
+  });
+});
+
+// ── summarizeNodes ────────────────────────────────────────────────────────────
+
+describe('summarizeNodes', () => {
+  const src = (text, file = 'f.js') => ({ text, textLower: text.toLowerCase(), file, startIndex: 0, endIndex: text.length });
+
+  test('returns one entry per type with correct shape', () => {
+    const sources = {
+      identifier: [src('foo'), src('bar')],
+      string: [src('"hi"')],
+    };
+    const result = summarizeNodes(sources);
+    expect(result).toHaveLength(2);
+    const id = result.find(n => n.type === 'identifier');
+    expect(id).toMatchObject({ type: 'identifier', typeLower: 'identifier', count: 2, custom: false });
+    expect(id.sources).toHaveLength(2);
+  });
+
+  test('sorts entries by count descending', () => {
+    const sources = {
+      string: [src('a')],
+      identifier: [src('x'), src('y'), src('z')],
+      comment: [src('//'), src('//')],
+    };
+    const result = summarizeNodes(sources);
+    expect(result[0].type).toBe('identifier');
+    expect(result[1].type).toBe('comment');
+    expect(result[2].type).toBe('string');
+    for (let i = 1; i < result.length; i++) {
+      expect(result[i - 1].count).toBeGreaterThanOrEqual(result[i].count);
+    }
+  });
+
+  test('sets typeLower to lowercase of type', () => {
+    const sources = { FunctionDeclaration: [src('function foo() {}')] };
+    const result = summarizeNodes(sources);
+    expect(result[0].typeLower).toBe('functiondeclaration');
+  });
+
+  test('returns empty array for empty sources', () => {
+    expect(summarizeNodes({})).toEqual([]);
+  });
+
+  test('count matches the number of source items', () => {
+    const sources = { expr: [src('1'), src('2'), src('3'), src('4')] };
+    expect(summarizeNodes(sources)[0].count).toBe(4);
   });
 });

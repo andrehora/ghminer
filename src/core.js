@@ -81,6 +81,54 @@
 
   const BUCKET_ORDER = ['< 1 KB', '1–10 KB', '10–50 KB', '50–100 KB', '> 100 KB'];
 
+  // ── Devicon language icon ────────────────────────────────────────────────────
+  const DEVICON_ALIASES = {
+    'c++': 'cplusplus', cpp: 'cplusplus', 'c/c++': 'cplusplus',
+    'c#': 'csharp',
+    tsx: 'typescript',
+    shell: 'bash',
+    vue: 'vuejs',
+    html: 'html5',
+    css: 'css3',
+    sql: 'mysql',
+    golang: 'go',
+    'rust-lang': 'rust',
+    googlecloudplatform: 'googlecloud',
+    facebookresearch: 'facebook',
+    meta: 'facebook',
+    amazon: 'amazonwebservices',
+    aws: 'amazonwebservices',
+    sveltejs: 'svelte',
+    tailwindlabs: 'tailwindcss',
+    yarnpkg: 'yarn',
+    jenkinsci: 'jenkins',
+    'rust_lang': 'rust',
+  };
+
+  // Returns a devicon CSS class string for `name`, or null if not mappable.
+  function langIcon(name) {
+    if (!name) return null;
+    const raw = String(name).toLowerCase().trim();
+    const key = DEVICON_ALIASES[raw] || raw.replace(/[^a-z0-9]/g, '');
+    if (!key) return null;
+    return `devicon-${key}-plain colored`;
+  }
+
+  // ── HTML escaping ────────────────────────────────────────────────────────────
+  const _htmlEscapes = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => _htmlEscapes[c]);
+  }
+
+  // ── Tree-sitter node summary ─────────────────────────────────────────────────
+  // Converts a sources map (type → [{text, textLower, file, startIndex, endIndex}])
+  // into a sorted array of node entries, descending by count.
+  function summarizeNodes(sources) {
+    return Object.entries(sources)
+      .sort(([, a], [, b]) => b.length - a.length)
+      .map(([type, arr]) => ({ type, typeLower: type.toLowerCase(), count: arr.length, sources: arr, custom: false }));
+  }
+
   function tsLangForPath(path) {
     return _extToTsLang[extOf(path)] || null;
   }
@@ -342,6 +390,7 @@
     EXT_TO_LANG,
     BUCKET_ORDER,
     TREE_SITTER_LANGUAGES,
+    DEVICON_ALIASES,
     tsLangForPath,
     groupFilesByTsLang,
     parseRepoUrl,
@@ -352,6 +401,9 @@
     flattenTree,
     withConcurrency,
     analyze,
+    langIcon,
+    escapeHtml,
+    summarizeNodes,
     parseHierarchicalQuery,
     applyTsNodeFilter,
   };
