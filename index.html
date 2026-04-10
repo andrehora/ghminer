@@ -27,9 +27,9 @@
 
     // ── Core (from core.js) ────────────────────────────────────────────────────────
     const {
-      SOURCE_EXTENSIONS, EXT_TO_LANG, BUCKET_ORDER,
+      SOURCE_EXTENSIONS, EXT_TO_LANG,
       TREE_SITTER_LANGUAGES, tsLangForPath, groupFilesByTsLang,
-      parseRepoUrl, extOf, langOf, formatSize, sizeBucket,
+      parseRepoUrl, extOf, langOf, formatSize,
       flattenTree, withConcurrency, analyze,
       langIcon, escapeHtml, summarizeNodes,
     } = window.GhMinerCore;
@@ -261,7 +261,7 @@
           return;
         }
 
-        // Step 2: filter source files
+        // Step 2: filter source files; only download content for tree-sitter files
         const sourceFiles = fileTree.filter(f => SOURCE_EXTENSIONS.has(extOf(f.path)));
         if (sourceFiles.length === 0) {
           setPhase('input');
@@ -269,14 +269,17 @@
           return;
         }
 
-        setProgress({ done: 0, total: sourceFiles.length });
+        const tsFiles = sourceFiles.filter(f => tsLangForPath(f.path));
+        const nonTsFiles = sourceFiles.filter(f => !tsLangForPath(f.path));
 
-        // Step 3: fetch each file
+        setProgress({ done: 0, total: tsFiles.length });
+
+        // Step 3: fetch content only for tree-sitter files; count the rest by size
         const fetched = [];
         const failed = [];
         let done = 0;
 
-        const tasks = sourceFiles.map(f => async () => {
+        const tasks = tsFiles.map(f => async () => {
           if (signal.aborted) return null;
           const fileUrl = `https://cdn.jsdelivr.net/gh/${user}/${repo}@${version}/${f.path}`;
           try {
@@ -297,7 +300,7 @@
         await withConcurrency(tasks, CONCURRENCY, (i, r) => {
           if (r) fetched.push(r);
           done++;
-          setProgress({ done, total: sourceFiles.length });
+          setProgress({ done, total: tsFiles.length });
         });
 
         if (signal.aborted) {
@@ -305,16 +308,18 @@
           return;
         }
 
-        if (fetched.length === 0) {
+        if (fetched.length === 0 && tsFiles.length > 0) {
           setPhase('input');
           setError('All file fetches failed. Try again or check the repo.');
           return;
         }
 
-        const analysisResult = analyze(fetched);
+        // Combine fetched (with content) and non-ts files (size only) for analysis
+        const allFiles = [...fetched, ...nonTsFiles.map(f => ({ path: f.path, size: f.size }))];
+        const analysisResult = { ...analyze(allFiles), processedFiles: fetched.length };
 
         // Step 4: tree-sitter AST analysis on every supported language
-        const parseable = fetched.filter(f => tsLangForPath(f.path));
+        const parseable = fetched;
         let results = [];
         let tsErr = '';
         if (parseable.length > 0) {

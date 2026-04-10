@@ -9,7 +9,7 @@
 }(typeof self !== 'undefined' ? self : this, function (React, Core) {
   const { useState, useRef, useMemo, useEffect } = React;
   const {
-    BUCKET_ORDER, langIcon, escapeHtml, formatSize,
+    langIcon, escapeHtml, formatSize,
     parseHierarchicalQuery, applyTsNodeFilter, computeContextualCounts,
   } = Core;
 
@@ -207,7 +207,7 @@
         {phase === 'loading' ? (
           <>
             <p className="loading__text">
-              Fetching {progress.done.toLocaleString()} / {progress.total.toLocaleString()} files…
+              Fetching {progress.done.toLocaleString()} / {progress.total.toLocaleString()} source files…
             </p>
             <div className="progress-track">
               <div
@@ -227,7 +227,7 @@
   // ── Results ────────────────────────────────────────────────────────────────
 
   function Results({ result, repoInfo, errors, tsResults, tsError }) {
-    const { totalFiles, totalLines, totalSize, avgSize, languages, top10, buckets } = result;
+    const { totalFiles, totalLines, totalSize, languages, processedFiles } = result;
     const [nodeQuery, setNodeQuery] = useState('');
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [showAllTypes, setShowAllTypes] = useState(false);
@@ -351,8 +351,6 @@
       if (nodeInputRef.current) nodeInputRef.current.focus();
     };
 
-    const bucketData = BUCKET_ORDER.map(b => ({ name: b, count: buckets[b] || 0 }));
-
     const HLJS_LANG = { javascript: 'javascript', typescript: 'typescript', tsx: 'typescript', python: 'python' };
 
     const highlightCode = (code, langId, query) => {
@@ -425,23 +423,21 @@
             </a>
           </div>
         )}
-        <Section title="Overview" defaultOpen={false}>
+        <Section title="Overview" defaultOpen={true}>
           <div className="stat-grid">
-            <StatCard label="Files" value={totalFiles.toLocaleString()} />
-            <StatCard label="Lines of Code" value={totalLines.toLocaleString()} />
             <StatCard label="Total Size" value={formatSize(totalSize)} />
             <StatCard label="Languages" value={languages.length} />
+            <StatCard label="Files" value={totalFiles.toLocaleString()} />
+            <StatCard label="Processed Files" value={processedFiles.toLocaleString()} />
+            <StatCard label="Processed Lines" value={totalLines.toLocaleString()} />
           </div>
-        </Section>
-
-        <Section title="Language Breakdown" defaultOpen={false}>
-          <div className="panel">
+          <div style={{ marginTop: '1rem' }} className="panel">
             <table className="data-table">
               <thead>
                 <tr>
                   <th>Language</th>
                   <th className="col-right">Files</th>
-                  <th className="col-right">Lines</th>
+                  <th className="col-right">Processed Lines</th>
                   <th className="col-right">%</th>
                 </tr>
               </thead>
@@ -454,7 +450,7 @@
                     </td>
                     <td className="data-table__cell text-right">{l.files.toLocaleString()}</td>
                     <td className="data-table__cell text-right">{l.lines.toLocaleString()}</td>
-                    <td className="data-table__cell text-right">{l.pct}%</td>
+                    <td className="data-table__cell text-right">{l.pct === '-' ? '-' : `${l.pct}%`}</td>
                   </tr>
                 ))}
               </tbody>
@@ -462,34 +458,6 @@
           </div>
         </Section>
 
-        <Section title="File Size Distribution" defaultOpen={false}>
-          <div className="two-col-grid">
-            <div className="panel-padded">
-              <p className="panel-label">Files by size bucket</p>
-              <BarChartCSS
-                data={bucketData}
-                valueKey="count"
-                labelKey="name"
-                colors="#FE4A60"
-                formatValue={v => `${v} files`}
-              />
-            </div>
-            <div className="panel-padded">
-              <p className="panel-label">Average file size: <strong>{formatSize(avgSize)}</strong></p>
-              <p className="panel-label">Largest files (top 10)</p>
-              <ol className="file-list">
-                {top10.map((f, i) => (
-                  <li key={f.path} className="file-list__item">
-                    <span className="file-list__name" title={f.path}>
-                      <span className="file-list__rank">{i + 1}.</span>{f.path.split('/').pop()}
-                    </span>
-                    <span className="file-list__size">{formatSize(f.size)}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        </Section>
 
         {tsError && (
           <div className="alert-warning">

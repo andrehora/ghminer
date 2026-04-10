@@ -79,8 +79,6 @@
     }
   }
 
-  const BUCKET_ORDER = ['< 1 KB', '1–10 KB', '10–50 KB', '50–100 KB', '> 100 KB'];
-
   // ── Devicon language icon ────────────────────────────────────────────────────
   const DEVICON_ALIASES = {
     'c++': 'cplusplus', cpp: 'cplusplus', 'c/c++': 'cplusplus',
@@ -188,14 +186,6 @@
     return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
   }
 
-  function sizeBucket(bytes) {
-    if (bytes < 1024) return '< 1 KB';
-    if (bytes < 10 * 1024) return '1–10 KB';
-    if (bytes < 50 * 1024) return '10–50 KB';
-    if (bytes < 100 * 1024) return '50–100 KB';
-    return '> 100 KB';
-  }
-
   function flattenTree(nodes, prefix = '') {
     const out = [];
     for (const n of nodes) {
@@ -232,7 +222,7 @@
 
     for (const f of files) {
       const lang = langOf(f.path);
-      const lines = (f.content.match(/\n/g) || []).length + (f.content.length > 0 ? 1 : 0);
+      const lines = f.content ? (f.content.match(/\n/g) || []).length + (f.content.length > 0 ? 1 : 0) : 0;
       totalLines += lines;
       totalSize += f.size;
 
@@ -243,19 +233,14 @@
       f.lines = lines;
     }
 
-    const languages = Object.values(langMap).sort((a, b) => b.lines - a.lines);
-    languages.forEach(l => { l.pct = totalLines > 0 ? ((l.lines / totalLines) * 100).toFixed(1) : '0.0'; });
+    const languages = Object.values(langMap).sort((a, b) =>
+      b.lines !== a.lines ? b.lines - a.lines : b.files - a.files
+    );
+    languages.forEach(l => {
+      l.pct = l.lines > 0 ? (totalLines > 0 ? ((l.lines / totalLines) * 100).toFixed(1) : '0.0') : '-';
+    });
 
-    const sorted = [...files].sort((a, b) => b.size - a.size);
-    const top10 = sorted.slice(0, 10);
-
-    const buckets = {};
-    BUCKET_ORDER.forEach(b => buckets[b] = 0);
-    for (const f of files) buckets[sizeBucket(f.size)]++;
-
-    const avgSize = files.length > 0 ? totalSize / files.length : 0;
-
-    return { totalFiles: files.length, totalLines, totalSize, avgSize, languages, top10, buckets };
+    return { totalFiles: files.length, totalLines, totalSize, languages };
   }
 
   // ── Tree-sitter hierarchical search helpers ─────────────────────────────────
@@ -410,7 +395,6 @@
     LANGUAGES,
     SOURCE_EXTENSIONS,
     EXT_TO_LANG,
-    BUCKET_ORDER,
     TREE_SITTER_LANGUAGES,
     DEVICON_ALIASES,
     tsLangForPath,
@@ -419,7 +403,6 @@
     extOf,
     langOf,
     formatSize,
-    sizeBucket,
     flattenTree,
     withConcurrency,
     analyze,

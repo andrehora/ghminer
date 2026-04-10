@@ -1,12 +1,10 @@
 const {
   SOURCE_EXTENSIONS,
   EXT_TO_LANG,
-  BUCKET_ORDER,
   parseRepoUrl,
   extOf,
   langOf,
   formatSize,
-  sizeBucket,
   flattenTree,
   withConcurrency,
   analyze,
@@ -141,36 +139,6 @@ describe('formatSize', () => {
   });
 });
 
-describe('sizeBucket', () => {
-  test('classifies into buckets', () => {
-    expect(sizeBucket(500)).toBe('< 1 KB');
-    expect(sizeBucket(2 * 1024)).toBe('1–10 KB');
-    expect(sizeBucket(20 * 1024)).toBe('10–50 KB');
-    expect(sizeBucket(75 * 1024)).toBe('50–100 KB');
-    expect(sizeBucket(200 * 1024)).toBe('> 100 KB');
-  });
-
-  test('every bucket appears in BUCKET_ORDER', () => {
-    [500, 2048, 20480, 76800, 200000].forEach(b => {
-      expect(BUCKET_ORDER).toContain(sizeBucket(b));
-    });
-  });
-
-  test('exact boundary values land in the upper bucket', () => {
-    expect(sizeBucket(1024)).toBe('1–10 KB');        // exactly 1 KB → not '< 1 KB'
-    expect(sizeBucket(10 * 1024)).toBe('10–50 KB');  // exactly 10 KB
-    expect(sizeBucket(50 * 1024)).toBe('50–100 KB'); // exactly 50 KB
-    expect(sizeBucket(100 * 1024)).toBe('> 100 KB'); // exactly 100 KB
-  });
-
-  test('values just below boundaries stay in lower bucket', () => {
-    expect(sizeBucket(1023)).toBe('< 1 KB');
-    expect(sizeBucket(10 * 1024 - 1)).toBe('1–10 KB');
-    expect(sizeBucket(50 * 1024 - 1)).toBe('10–50 KB');
-    expect(sizeBucket(100 * 1024 - 1)).toBe('50–100 KB');
-  });
-});
-
 describe('flattenTree', () => {
   test('flattens a flat list', () => {
     const tree = [
@@ -283,7 +251,6 @@ describe('analyze', () => {
     expect(r.totalSize).toBe(350);
     // a.js: 3 (2 newlines + 1), b.js: 2 (1 newline + 1), c.py: 4 (3 newlines + 1)
     expect(r.totalLines).toBe(9);
-    expect(r.avgSize).toBeCloseTo(350 / 3);
 
     const js = r.languages.find(l => l.lang === 'JavaScript');
     const py = r.languages.find(l => l.lang === 'Python');
@@ -301,38 +268,12 @@ describe('analyze', () => {
     expect(Math.round(sumPct)).toBe(100);
   });
 
-  test('top10 holds at most 10 items, sorted by size desc', () => {
-    const files = Array.from({ length: 15 }, (_, i) => ({
-      path: `f${i}.js`, size: i * 10, content: 'x',
-    }));
-    const r = analyze(files);
-    expect(r.top10).toHaveLength(10);
-    expect(r.top10[0].size).toBe(140);
-    expect(r.top10[9].size).toBe(50);
-  });
-
-  test('buckets count files by size bucket and include all keys', () => {
-    const files = [
-      { path: 'small.js', size: 100, content: 'a' },
-      { path: 'mid.js', size: 5 * 1024, content: 'a' },
-      { path: 'big.js', size: 200 * 1024, content: 'a' },
-    ];
-    const r = analyze(files);
-    BUCKET_ORDER.forEach(b => expect(r.buckets).toHaveProperty(b));
-    expect(r.buckets['< 1 KB']).toBe(1);
-    expect(r.buckets['1–10 KB']).toBe(1);
-    expect(r.buckets['> 100 KB']).toBe(1);
-    expect(r.buckets['10–50 KB']).toBe(0);
-  });
-
   test('handles empty file list', () => {
     const r = analyze([]);
     expect(r.totalFiles).toBe(0);
     expect(r.totalLines).toBe(0);
     expect(r.totalSize).toBe(0);
-    expect(r.avgSize).toBe(0);
     expect(r.languages).toEqual([]);
-    expect(r.top10).toEqual([]);
   });
 
   test('attaches lines property to each file', () => {
@@ -359,13 +300,6 @@ describe('analyze', () => {
     expect(other.files).toBe(2);
   });
 
-  test('single file produces correct avgSize and top10', () => {
-    const files = [{ path: 'a.js', size: 2048, content: 'x' }];
-    const r = analyze(files);
-    expect(r.avgSize).toBe(2048);
-    expect(r.top10).toHaveLength(1);
-    expect(r.top10[0].path).toBe('a.js');
-  });
 });
 
 describe('constants', () => {

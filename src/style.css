@@ -315,31 +315,30 @@ table { border-collapse: collapse; }
 /* ── StatCard ───────────────────────────────────────────────────────────── */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.75rem;
 }
-@media (min-width: 640px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
 
 .stat-card {
   background: #fff;
   border-radius: var(--radius-xl);
-  padding: 1rem;
+  padding: 0.5rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.15rem;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--gray-200);
 }
 
 .stat-card__label {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   color: var(--gray-500);
   text-transform: uppercase;
   letter-spacing: 0.025em;
 }
 
 .stat-card__value {
-  font-size: 1.5rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--gray-800);
 }

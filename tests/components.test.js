@@ -456,18 +456,13 @@ describe('RepoInput keyboard navigation', () => {
 
 const makeResult = () => ({
   totalFiles: 42,
+  processedFiles: 30,
   totalLines: 1234,
   totalSize: 56789,
-  avgSize: 1351,
   languages: [
     { lang: 'JavaScript', files: 30, lines: 1000, pct: '71.4' },
     { lang: 'Python', files: 12, lines: 234, pct: '28.6' },
   ],
-  top10: [
-    { path: 'src/main.js', size: 10240 },
-    { path: 'src/utils.js', size: 5120 },
-  ],
-  buckets: { '< 1 KB': 10, '1–10 KB': 20, '10–50 KB': 8, '50–100 KB': 2, '> 100 KB': 1 },
 });
 
 const makeNodes = (overrides = []) => [
@@ -486,22 +481,12 @@ describe('Results — basic rendering', () => {
     expect(screen.getByText('Overview')).toBeInTheDocument();
   });
 
-  test('renders Language Breakdown section', () => {
-    render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    expect(screen.getByText('Language Breakdown')).toBeInTheDocument();
-  });
-
-  test('renders File Size Distribution section', () => {
-    render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    expect(screen.getByText('File Size Distribution')).toBeInTheDocument();
-  });
-
   test('shows stat cards after opening Overview', async () => {
     const user = userEvent.setup();
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
     await user.click(screen.getByText('Overview'));
-    expect(screen.getByText('Files')).toBeInTheDocument();
-    expect(screen.getByText('Lines of Code')).toBeInTheDocument();
+    expect(screen.getAllByText('Files').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Processed Lines').length).toBeGreaterThan(0);
     expect(screen.getByText('Total Size')).toBeInTheDocument();
     expect(screen.getByText('Languages')).toBeInTheDocument();
   });
@@ -535,7 +520,7 @@ describe('Results — language breakdown', () => {
   test('shows language names in table after opening section', async () => {
     const user = userEvent.setup();
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('Language Breakdown'));
+    await user.click(screen.getByText('Overview'));
     expect(screen.getByText('JavaScript')).toBeInTheDocument();
     expect(screen.getByText('Python')).toBeInTheDocument();
   });
@@ -543,8 +528,8 @@ describe('Results — language breakdown', () => {
   test('shows file and line counts in language table', async () => {
     const user = userEvent.setup();
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('Language Breakdown'));
-    expect(screen.getByText('30')).toBeInTheDocument();
+    await user.click(screen.getByText('Overview'));
+    expect(screen.getAllByText('30').length).toBeGreaterThan(0);
     expect(screen.getByText('1,000')).toBeInTheDocument();
   });
 
@@ -555,34 +540,9 @@ describe('Results — language breakdown', () => {
       languages: [{ lang: 'TypeScript', files: 42, lines: 1234, pct: '100.0' }],
     };
     render(<Results result={singleLangResult} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('Language Breakdown'));
+    await user.click(screen.getByText('Overview'));
     expect(screen.getByText('TypeScript')).toBeInTheDocument();
     expect(screen.queryByText('Python')).not.toBeInTheDocument();
-  });
-});
-
-describe('Results — file size distribution', () => {
-  test('shows top-10 files after opening section', async () => {
-    const user = userEvent.setup();
-    render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('File Size Distribution'));
-    expect(screen.getByText('main.js')).toBeInTheDocument();
-    expect(screen.getByText('utils.js')).toBeInTheDocument();
-  });
-
-  test('shows average file size', async () => {
-    const user = userEvent.setup();
-    render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('File Size Distribution'));
-    expect(screen.getByText(/average file size/i)).toBeInTheDocument();
-  });
-
-  test('renders correctly when top10 has fewer than 10 files', async () => {
-    const user = userEvent.setup();
-    const smallResult = { ...makeResult(), top10: [{ path: 'only.js', size: 512 }] };
-    render(<Results result={smallResult} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('File Size Distribution'));
-    expect(screen.getByText('only.js')).toBeInTheDocument();
   });
 });
 
