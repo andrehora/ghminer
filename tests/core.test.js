@@ -13,6 +13,8 @@ const {
   TREE_SITTER_LANGUAGES,
   tsLangForPath,
   groupFilesByTsLang,
+  parseHierarchicalQuery,
+  applyTsNodeFilter,
 } = require('../core.js');
 
 describe('parseRepoUrl', () => {
@@ -362,5 +364,197 @@ describe('tree-sitter language registry', () => {
     expect(groups.get('javascript').files).toHaveLength(1);
     expect(groups.get('typescript').files).toHaveLength(1);
     expect(groups.has('markdown')).toBe(false);
+  });
+});
+
+// ── Helpers for hierarchical search tests ────────────────────────────────────
+
+function makeNode(type, sources) {
+  return {
+    type,
+    typeLower: type.toLowerCase(),
+    count: sources.length,
+    sources: sources.map(s => ({
+      text: s.text,
+      textLower: s.text.toLowerCase(),
+      file: s.file,
+      startIndex: s.start,
+      endIndex: s.end,
+    })),
+    custom: false,
+  };
+}
+
+// ── parseHierarchicalQuery ────────────────────────────────────────────────────
+
+describe('parseHierarchicalQuery', () => {
+  const nodes = [
+    makeNode('function_declaration', []),
+    makeNode('identifier', []),
+    makeNode('string', []),
+  ];
+
+  test('empty query returns empty filterTypes and empty textQ', () => {
+    expect(parseHierarchicalQuery('', nodes)).toEqual({ filterTypes: [], textQ: '' });
+    expect(parseHierarchicalQuery('   ', nodes)).toEqual({ filterTypes: [], textQ: '   ' });
+  });
+
+  test('plain text with no type match is treated as free-text query', () => {
+    expect(parseHierarchicalQuery('hello', nodes)).toEqual({ filterTypes: [], textQ: 'hello' });
+  });
+
+  test('exact type match with no colon becomes a type-only filter', () => {
+    expect(parseHierarchicalQuery('identifier', nodes)).toEqual({ filterTypes: ['identifier'], textQ: '' });
+  });
+
+  test('type:text splits into one filter and text query', () => {
+    expect(parseHierarchicalQuery('function_declaration:foo', nodes)).toEqual({
+      filterTypes: ['function_declaration'],
+      textQ: 'foo',
+    });
+  });
+
+  test('type1:type2: parses two filter levels with empty text', () => {
+    expect(parseHierarchicalQuery('function_declaration:identifier:', nodes)).toEqual({
+      filterTypes: ['function_declaration', 'identifier'],
+      textQ: '',
+    });
+  });
+
+  test('type1:type2:text parses two filter levels with text', () => {
+    expect(parseHierarchicalQuery('function_declaration:identifier:myvar', nodes)).toEqual({
+      filterTypes: ['function_declaration', 'identifier'],
+      textQ: 'myvar',
+    });
+  });
+
+  test('unknown type in chain stops hierarchy — remainder becomes textQ', () => {
+    expect(parseHierarchicalQuery('function_declaration:unknown:identifier', nodes)).toEqual({
+      filterTypes: ['function_declaration'],
+      textQ: 'unknown:identifier',
+    });
+  });
+
+  test('strips leading slash from textQ (autocomplete artifact)', () => {
+    expect(parseHierarchicalQuery('function_declaration:/ident', nodes)).toEqual({
+      filterTypes: ['function_declaration'],
+      textQ: 'ident',
+    });
+  });
+
+  test('standalone slash in textQ is stripped to empty string', () => {
+    expect(parseHierarchicalQuery('function_declaration:/', nodes)).toEqual({
+      filterTypes: ['function_declaration'],
+      textQ: '',
+    });
+  });
+});
+
+// ── applyTsNodeFilter ─────────────────────────────────────────────────────────
+
+describe('applyTsNodeFilter', () => {
+  // Two files each with a function_declaration containing identifiers.
+  //
+  // file1.js:
+  //   function_declaration [0, 50)
+  //     identifier "foo" [5, 8)
+  //     identifier "bar" [10, 13)
+  //
+  // file2.js:
+  //   function_declaration [0, 40)
+  //     identifier "baz" [3, 6)
+  //   identifier "orphan" [60, 66) — outside any function_declaration
+
+  const fnNode = makeNode('function_declaration', [
+    { text: 'function foo() {}', file: 'file1.js', start: 0, end: 50 },
+    { text: 'function baz() {}', file: 'file2.js', start: 0, end: 40 },
+  ]);
+  const idNode = makeNode('identifier', [
+    { text: 'foo', file: 'file1.js', start: 5, end: 8 },
+    { text: 'bar', file: 'file1.js', start: 10, end: 13 },
+    { text: 'baz', file: 'file2.js', start: 3, end: 6 },
+    { text: 'orphan', file: 'file2.js', start: 60, end: 66 },
+  ]);
+  const strNode = makeNode('string', [
+    { text: 'hello', file: 'file2.js', start: 50, end: 55 },
+  ]);
+
+  const tsNodes = [fnNode, idNode, strNode];
+
+  test('empty filterTypes with textQ searches across all nodes', () => {
+    const results = applyTsNodeFilter(tsNodes, [], 'foo', 10);
+    const types = results.map(r => r.type);
+    expect(types).toContain('function_declaration');
+    expect(types).toContain('identifier');
+    expect(types).not.toContain('string');
+  });
+
+  test('single type filter with no text returns all of that type', () => {
+    const results = applyTsNodeFilter(tsNodes, ['function_declaration'], '', 10);
+    expect(results).toHaveLength(1);
+    expect(results[0].type).toBe('function_declaration');
+    expect(results[0].matches).toBe(2);
+  });
+
+  test('hierarchical filter: identifiers inside function_declarations', () => {
+    const results = applyTsNodeFilter(tsNodes, ['function_declaration', 'identifier'], '', 10);
+    expect(results).toHaveLength(1);
+    expect(results[0].type).toBe('identifier');
+    const texts = results[0].items.map(i => i.text);
+    expect(texts).toContain('foo');
+    expect(texts).toContain('bar');
+    expect(texts).toContain('baz');
+    expect(texts).not.toContain('orphan'); // outside all function_declarations
+    expect(results[0].matches).toBe(3);
+  });
+
+  test('hierarchical filter with textQ narrows further by text', () => {
+    const results = applyTsNodeFilter(tsNodes, ['function_declaration', 'identifier'], 'ba', 10);
+    expect(results).toHaveLength(1);
+    const texts = results[0].items.map(i => i.text);
+    expect(texts).toContain('bar');
+    expect(texts).toContain('baz');
+    expect(texts).not.toContain('foo');
+    expect(texts).not.toContain('orphan');
+  });
+
+  test('returns [] when a filter type does not exist in tsNodes', () => {
+    expect(applyTsNodeFilter(tsNodes, ['nonexistent'], '', 10)).toEqual([]);
+  });
+
+  test('returns [] when no text matches within filtered nodes', () => {
+    const results = applyTsNodeFilter(tsNodes, ['function_declaration', 'identifier'], 'zzz', 10);
+    expect(results).toHaveLength(0);
+  });
+
+  test('results are sorted by matches descending', () => {
+    const results = applyTsNodeFilter(tsNodes, [], 'o', 10);
+    for (let i = 1; i < results.length; i++) {
+      expect(results[i - 1].matches).toBeGreaterThanOrEqual(results[i].matches);
+    }
+  });
+
+  test('respects maxItems cap on items while matches stays accurate', () => {
+    // identifier has 4 sources; maxItems=2 caps items but matches should still be 4
+    const results = applyTsNodeFilter(tsNodes, ['identifier'], '', 2);
+    expect(results[0].items.length).toBeLessThanOrEqual(2);
+    expect(results[0].matches).toBe(4);
+  });
+
+  test('deduplicates items with identical (file, text)', () => {
+    const dupId = makeNode('identifier', [
+      { text: 'foo', file: 'file1.js', start: 5, end: 8 },
+      { text: 'foo', file: 'file1.js', start: 5, end: 8 },
+    ]);
+    const results = applyTsNodeFilter([dupId], ['identifier'], '', 10);
+    expect(results[0].matches).toBe(1);
+    expect(results[0].items).toHaveLength(1);
+  });
+
+  test('identifier outside all containers is excluded by hierarchical filter', () => {
+    // "orphan" is at [60,66] in file2.js; function_declaration spans [0,40] — no overlap
+    const results = applyTsNodeFilter(tsNodes, ['function_declaration', 'identifier'], '', 10);
+    const texts = results[0].items.map(i => i.text);
+    expect(texts).not.toContain('orphan');
   });
 });

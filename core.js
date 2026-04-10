@@ -210,6 +210,132 @@
     return { totalFiles: files.length, totalLines, totalSize, avgSize, languages, top10, buckets };
   }
 
+  // ── Tree-sitter hierarchical search helpers ─────────────────────────────────
+
+  // Parse a user query into hierarchical type filters and a free-text term.
+  // Input query is expected to already be trimmed and lowercased.
+  // Format: "type1:type2:…:text" where each leading segment that matches a known
+  // node type becomes a filter level; the remainder becomes the text query.
+  // Returns { filterTypes: string[], textQ: string }.
+  function parseHierarchicalQuery(rawLower, tsNodes) {
+    const parts = rawLower.split(':');
+    const filterTypes = [];
+    for (let i = 0; i < parts.length - 1; i++) {
+      const part = parts[i].trim();
+      if (part && tsNodes.some(n => n.typeLower === part)) {
+        filterTypes.push(part);
+      } else {
+        break;
+      }
+    }
+    let textQ = filterTypes.length > 0
+      ? parts.slice(filterTypes.length).join(':').trim().replace(/^\//, '')
+      : rawLower;
+
+    // No colon: if the query exactly matches a known node type, treat it as a type-only filter.
+    if (filterTypes.length === 0 && tsNodes.some(n => n.typeLower === textQ)) {
+      filterTypes.push(textQ);
+      textQ = '';
+    }
+
+    return { filterTypes, textQ };
+  }
+
+  // Apply hierarchical containment filtering to tsNodes.
+  // filterTypes: ordered array of lowercased node-type names.
+  // textQ: free-text substring filter (already lowercased), may be empty.
+  // maxItems: max result items per type (default 10).
+  // Returns an array of { ...nodeEntry, items, matches } sorted by matches desc.
+  function applyTsNodeFilter(tsNodes, filterTypes, textQ, maxItems) {
+    const MAX = maxItems || 10;
+    const out = [];
+
+    if (filterTypes.length > 0) {
+      // Build containment hierarchy through type filters.
+      // Each level narrows results to nodes contained within the previous level's nodes.
+      let containerRanges = null; // Map<file, [{start, end}]>
+      let lastLevelSources = null;
+      let lastLevelNode = null;
+
+      for (const typeFilter of filterTypes) {
+        const matchingNode = tsNodes.find(n => n.typeLower === typeFilter);
+        if (!matchingNode) return [];
+
+        let sources = matchingNode.sources;
+
+        // Filter by containment within previous level
+        if (containerRanges) {
+          sources = sources.filter(s => {
+            const ranges = containerRanges.get(s.file);
+            if (!ranges) return false;
+            return ranges.some(r => s.startIndex >= r.start && s.endIndex <= r.end);
+          });
+        }
+
+        // Build ranges for next level
+        containerRanges = new Map();
+        for (const s of sources) {
+          if (!containerRanges.has(s.file)) containerRanges.set(s.file, []);
+          containerRanges.get(s.file).push({ start: s.startIndex, end: s.endIndex });
+        }
+
+        lastLevelSources = sources;
+        lastLevelNode = matchingNode;
+      }
+
+      if (!textQ) {
+        // Type-only filter — deduplicate by (file, text)
+        const seen = new Set();
+        const deduped = [];
+        for (const s of lastLevelSources) {
+          const key = `${s.file || ''}\0${s.text || ''}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            if (deduped.length < MAX) deduped.push(s);
+          }
+        }
+        out.push({ ...lastLevelNode, items: deduped, matches: seen.size });
+      } else {
+        // Type + text filter
+        const items = [];
+        const seenKeys = new Set();
+        for (const s of lastLevelSources) {
+          if (s.textLower.includes(textQ)) {
+            const key = `${s.file || ''}\0${s.text || ''}`;
+            if (!seenKeys.has(key)) {
+              seenKeys.add(key);
+              if (items.length < MAX) items.push(s);
+            }
+          }
+        }
+        if (seenKeys.size > 0) {
+          out.push({ ...lastLevelNode, items, matches: seenKeys.size });
+        }
+      }
+    } else {
+      // No type filter — text search across all nodes
+      for (const n of tsNodes) {
+        const items = [];
+        const seenKeys = new Set();
+        for (const s of n.sources) {
+          if (s.textLower.includes(textQ)) {
+            const key = `${s.file || ''}\0${s.text || ''}`;
+            if (!seenKeys.has(key)) {
+              seenKeys.add(key);
+              if (items.length < MAX) items.push(s);
+            }
+          }
+        }
+        if (seenKeys.size > 0) {
+          out.push({ ...n, items, matches: seenKeys.size });
+        }
+      }
+    }
+
+    out.sort((a, b) => b.matches - a.matches);
+    return out;
+  }
+
   return {
     LANGUAGES,
     SOURCE_EXTENSIONS,
@@ -226,5 +352,7 @@
     flattenTree,
     withConcurrency,
     analyze,
+    parseHierarchicalQuery,
+    applyTsNodeFilter,
   };
 }));

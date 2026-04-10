@@ -407,7 +407,9 @@
           }
           if (e.key === 'Escape') {
             e.preventDefault();
-            setNodeQuery('');
+            // Dismiss the dropdown but keep existing badges intact
+            const prefix = badgeTypes.length > 0 ? badgeTypes.join(':') + ':' : '';
+            setNodeQuery(prefix);
             setNodeSugIndex(-1);
             return;
           }
@@ -511,115 +513,8 @@
             return { ...n, items: [first], matches: n.count };
           });
         }
-
-        // Parse hierarchical type filters from the query
-        const parts = raw.split(':');
-        const filterTypes = [];
-        for (let i = 0; i < parts.length - 1; i++) {
-          const part = parts[i].trim();
-          if (part && tsNodes.some(n => n.typeLower === part)) {
-            filterTypes.push(part);
-          } else {
-            break;
-          }
-        }
-        let textQ = filterTypes.length > 0
-          ? parts.slice(filterTypes.length).join(':').trim()
-          : raw;
-
-        // No colon: if the query exactly matches a known node type, treat it as a type-only filter.
-        if (filterTypes.length === 0 && tsNodes.some(n => n.typeLower === textQ)) {
-          filterTypes.push(textQ);
-          textQ = '';
-        }
-
-        const out = [];
-
-        if (filterTypes.length > 0) {
-          // Build containment hierarchy through type filters.
-          // Each level narrows results to nodes contained within the previous level's nodes.
-          let containerRanges = null; // Map<file, [{start, end}]>
-          let lastLevelSources = null;
-          let lastLevelNode = null;
-
-          for (const typeFilter of filterTypes) {
-            const matchingNode = tsNodes.find(n => n.typeLower === typeFilter);
-            if (!matchingNode) return [];
-
-            let sources = matchingNode.sources;
-
-            // Filter by containment within previous level
-            if (containerRanges) {
-              sources = sources.filter(s => {
-                const ranges = containerRanges.get(s.file);
-                if (!ranges) return false;
-                return ranges.some(r => s.startIndex >= r.start && s.endIndex <= r.end);
-              });
-            }
-
-            // Build ranges for next level
-            containerRanges = new Map();
-            for (const s of sources) {
-              if (!containerRanges.has(s.file)) containerRanges.set(s.file, []);
-              containerRanges.get(s.file).push({ start: s.startIndex, end: s.endIndex });
-            }
-
-            lastLevelSources = sources;
-            lastLevelNode = matchingNode;
-          }
-
-          // Display results for the last type filter level
-          if (!textQ) {
-            // Type-only filter — deduplicate by (file, text)
-            const seen = new Set();
-            const deduped = [];
-            for (const s of lastLevelSources) {
-              const key = `${s.file || ''}\0${s.text || ''}`;
-              if (!seen.has(key)) {
-                seen.add(key);
-                if (deduped.length < MAX_ITEMS_PER_TYPE) deduped.push(s);
-              }
-            }
-            out.push({ ...lastLevelNode, items: deduped, matches: seen.size });
-          } else {
-            // Type + text filter
-            const items = [];
-            const seenKeys = new Set();
-            for (const s of lastLevelSources) {
-              if (s.textLower.includes(textQ)) {
-                const key = `${s.file || ''}\0${s.text || ''}`;
-                if (!seenKeys.has(key)) {
-                  seenKeys.add(key);
-                  if (items.length < MAX_ITEMS_PER_TYPE) items.push(s);
-                }
-              }
-            }
-            if (seenKeys.size > 0) {
-              out.push({ ...lastLevelNode, items, matches: seenKeys.size });
-            }
-          }
-        } else {
-          // No type filter — text search across all nodes
-          for (const n of tsNodes) {
-            const items = [];
-            const seenKeys = new Set();
-            for (const s of n.sources) {
-              if (s.textLower.includes(textQ)) {
-                const key = `${s.file || ''}\0${s.text || ''}`;
-                if (!seenKeys.has(key)) {
-                  seenKeys.add(key);
-                  if (items.length < MAX_ITEMS_PER_TYPE) items.push(s);
-                }
-              }
-            }
-            if (seenKeys.size > 0) {
-              out.push({ ...n, items, matches: seenKeys.size });
-            }
-          }
-        }
-
-        out.sort((a, b) => b.matches - a.matches);
-        return out;
+        const { filterTypes, textQ } = GhMinerCore.parseHierarchicalQuery(raw, tsNodes);
+        return GhMinerCore.applyTsNodeFilter(tsNodes, filterTypes, textQ, MAX_ITEMS_PER_TYPE);
       }, [tsNodes, debouncedQuery]);
 
       return (
@@ -771,7 +666,14 @@
                       value={inputText}
                       onChange={handleInputChange}
                       onKeyDown={handleNodeQueryKeyDown}
-                      onBlur={() => setTimeout(() => { setNodeSugIndex(-1); }, 150)}
+                      onBlur={() => setTimeout(() => {
+                        // Close dropdown by stripping any uncommitted /… input, keeping badges
+                        if (inputText.startsWith('/')) {
+                          const prefix = badgeTypes.length > 0 ? badgeTypes.join(':') + ':' : '';
+                          setNodeQuery(prefix);
+                        }
+                        setNodeSugIndex(-1);
+                      }, 150)}
                       placeholder={badgeTypes.length > 0 ? 'Filter text or type / to add another node type…' : 'Search text or type / to filter by node type…'}
                       className="flex-1 min-w-0 bg-transparent text-gray-800 placeholder-gray-400 focus:outline-none px-1 py-0.5"
                     />
