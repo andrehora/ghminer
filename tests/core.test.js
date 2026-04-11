@@ -345,12 +345,30 @@ describe('tree-sitter language registry', () => {
     expect(ids).toEqual(expect.arrayContaining(['python', 'javascript', 'typescript']));
   });
 
+  test('java is registered in TREE_SITTER_LANGUAGES', () => {
+    const ids = TREE_SITTER_LANGUAGES.map(l => l.id);
+    expect(ids).toContain('java');
+  });
+
+  test('java TREE_SITTER_LANGUAGES entry has correct shape', () => {
+    const java = TREE_SITTER_LANGUAGES.find(l => l.id === 'java');
+    expect(java).toBeDefined();
+    expect(java.label).toBe('Java');
+    expect(java.extensions).toContain('.java');
+    expect(java.wasmUrl).toMatch(/tree-sitter-java.*\.wasm$/);
+  });
+
   test('tsLangForPath maps known extensions to the right language', () => {
     expect(tsLangForPath('foo.py').id).toBe('python');
     expect(tsLangForPath('foo.js').id).toBe('javascript');
     expect(tsLangForPath('foo.jsx').id).toBe('javascript');
     expect(tsLangForPath('foo.ts').id).toBe('typescript');
     expect(tsLangForPath('foo/bar.PY').id).toBe('python');
+  });
+
+  test('tsLangForPath maps .java to java', () => {
+    expect(tsLangForPath('foo.java').id).toBe('java');
+    expect(tsLangForPath('src/Main.java').id).toBe('java');
   });
 
   test('tsLangForPath returns null for unsupported files', () => {
@@ -370,6 +388,17 @@ describe('tree-sitter language registry', () => {
     expect(groups.get('python').files).toHaveLength(2);
     expect(groups.get('javascript').files).toHaveLength(1);
     expect(groups.get('typescript').files).toHaveLength(1);
+    expect(groups.has('markdown')).toBe(false);
+  });
+
+  test('groupFilesByTsLang buckets java files', () => {
+    const files = [
+      { path: 'Main.java', size: 1 },
+      { path: 'Foo.java', size: 1 },
+      { path: 'README.md', size: 1 },
+    ];
+    const groups = groupFilesByTsLang(files);
+    expect(groups.get('java').files).toHaveLength(2);
     expect(groups.has('markdown')).toBe(false);
   });
 

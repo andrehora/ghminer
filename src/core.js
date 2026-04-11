@@ -32,7 +32,10 @@
       extensions: ['.py', '.py3'],
       treeSitter: 'https://cdn.jsdelivr.net/npm/tree-sitter-python@0.25.0/tree-sitter-python.wasm',
     },
-    'Java': { extensions: ['.java'] },
+    'Java': {
+      extensions: ['.java'],
+      treeSitter: 'https://cdn.jsdelivr.net/npm/tree-sitter-java@0.23.5/tree-sitter-java.wasm',
+    },
     'C/C++': { extensions: ['.c', '.cpp', '.h'] },
     'C#': { extensions: ['.cs'] },
     'Ruby': { extensions: ['.rb'] },
