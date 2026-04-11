@@ -481,20 +481,16 @@ describe('Results — basic rendering', () => {
     expect(screen.getByText('Overview')).toBeInTheDocument();
   });
 
-  test('shows stat cards after opening Overview', async () => {
-    const user = userEvent.setup();
+  test('shows stat cards after opening Overview', () => {
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('Overview'));
     expect(screen.getAllByText('Files').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Processed Lines').length).toBeGreaterThan(0);
     expect(screen.getByText('Total Size')).toBeInTheDocument();
     expect(screen.getByText('Languages')).toBeInTheDocument();
   });
 
-  test('Overview stat cards show correct values', async () => {
-    const user = userEvent.setup();
+  test('Overview stat cards show correct values', () => {
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('Overview'));
     expect(screen.getByText('42')).toBeInTheDocument();
     expect(screen.getByText('1,234')).toBeInTheDocument();
   });
@@ -517,30 +513,24 @@ describe('Results — repoInfo', () => {
 });
 
 describe('Results — language breakdown', () => {
-  test('shows language names in table after opening section', async () => {
-    const user = userEvent.setup();
+  test('shows language names in table after opening section', () => {
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('Overview'));
     expect(screen.getByText('JavaScript')).toBeInTheDocument();
     expect(screen.getByText('Python')).toBeInTheDocument();
   });
 
-  test('shows file and line counts in language table', async () => {
-    const user = userEvent.setup();
+  test('shows file and line counts in language table', () => {
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('Overview'));
     expect(screen.getAllByText('30').length).toBeGreaterThan(0);
     expect(screen.getByText('1,000')).toBeInTheDocument();
   });
 
-  test('renders correctly with a single language', async () => {
-    const user = userEvent.setup();
+  test('renders correctly with a single language', () => {
     const singleLangResult = {
       ...makeResult(),
       languages: [{ lang: 'TypeScript', files: 42, lines: 1234, pct: '100.0' }],
     };
     render(<Results result={singleLangResult} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    await user.click(screen.getByText('Overview'));
     expect(screen.getByText('TypeScript')).toBeInTheDocument();
     expect(screen.queryByText('Python')).not.toBeInTheDocument();
   });
@@ -589,12 +579,12 @@ describe('Results — AST section', () => {
 
   test('shows AST section when tsResults has data', () => {
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={makeTsResults()} tsError="" />);
-    expect(screen.getByText(/AST Node Types/i)).toBeInTheDocument();
+    expect(screen.getByText(/Node Search/i)).toBeInTheDocument();
   });
 
   test('does not show AST section when tsResults is empty', () => {
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={[]} tsError="" />);
-    expect(screen.queryByText(/AST Node Types/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Node Search/i)).not.toBeInTheDocument();
   });
 
   test('renders node types in table', () => {
@@ -655,12 +645,12 @@ describe('Results — AST language tabs', () => {
   test('clicking a language tab switches the active nodes', async () => {
     const user = userEvent.setup();
     render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={multiTsResults} tsError="" />);
-    // function_declaration is shown in the table (as a td)
-    expect(screen.getAllByText('function_declaration').some(el => el.tagName === 'TD')).toBe(true);
+    // function_declaration is shown in the table (as a span inside a td)
+    expect(screen.getAllByText('function_declaration').some(el => el.tagName === 'SPAN')).toBe(true);
     await user.click(screen.getByRole('button', { name: /python/i }));
     expect(screen.getAllByText('def_statement').length).toBeGreaterThanOrEqual(1);
     // function_declaration table row is gone
-    expect(screen.queryAllByText('function_declaration').some(el => el.tagName === 'TD')).toBe(false);
+    expect(screen.queryAllByText('function_declaration').some(el => el.tagName === 'SPAN')).toBe(false);
   });
 
   test('does not show tab buttons for single tsResult', () => {
@@ -940,6 +930,6 @@ describe('Results — tsResults change', () => {
       );
     });
     // Falls back to javascript — function_declaration is in the table
-    expect(screen.getAllByText('function_declaration').some(el => el.tagName === 'TD')).toBe(true);
+    expect(screen.getAllByText('function_declaration').some(el => el.tagName === 'SPAN')).toBe(true);
   });
 });
