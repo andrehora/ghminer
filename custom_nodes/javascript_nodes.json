@@ -1,6 +1,6 @@
 [
-  {"name": "todo", "node": "comment", "substring": ["todo", "fixme", "xxx"]},
-  {"name": "test", "node": "call_expression", "substring": ["test("]},
-  {"name": "async_function", "node": "function_declaration", "substring": "async function"},
-  {"name": "console_log", "node": "call_expression", "substring": "console.log"}
+  {"name": "todo", "node": "comment", "pattern": ["todo", "fixme", "xxx"]},
+  {"name": "test", "node": "call_expression", "pattern": ["test(", "it("]},
+  {"name": "async_function", "node": "function_declaration", "pattern": "async function"},
+  {"name": "console_log", "node": "call_expression", "pattern": "console\\.log"}
 ]

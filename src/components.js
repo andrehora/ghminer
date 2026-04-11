@@ -466,7 +466,7 @@
         )}
 
         {tsResults.length > 0 && (
-          <Section title="AST Node Types (tree-sitter)">
+          <Section title="Node Search">
             {tsResults.length > 1 && (
               <div className="lang-tabs">
                 {tsResults.map(r => {
@@ -572,7 +572,7 @@
                             if (nodeInputRef.current) nodeInputRef.current.focus();
                           }}
                           className={`node-pill custom${active ? ' active' : ''}`}
-                          title={`Custom: ${n.node} containing "${n.substring}"`}
+                          title={`Custom: ${n.node} matching "${n.pattern}"`}
                         >
                           {n.type}
                         </button>
@@ -625,11 +625,11 @@
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredNodes.map(({ type, count, items, matches, custom, substring }) => {
+                      {filteredNodes.map(({ type, count, items, matches, custom, pattern }) => {
                         const raw = debouncedQuery.trim().toLowerCase();
                         const colon = raw.indexOf(':');
                         const textQ = colon !== -1 ? raw.slice(colon + 1).trim() : raw;
-                        const customSub = custom && substring ? substring.split(',')[0].trim().toLowerCase() : '';
+                        const customSub = custom && pattern ? pattern.split(',')[0].trim().toLowerCase() : '';
                         const q = textQ || customSub;
                         const displayCount = raw ? matches : count;
                         const truncated = !!raw && matches > items.length;

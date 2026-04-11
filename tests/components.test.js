@@ -866,7 +866,7 @@ const makeCustomNode = () => ({
   sources: [{ text: 'fetch("/api")', textLower: 'fetch("/api")', file: 'src/a.js' }],
   custom: true,
   node: 'call_expression',
-  substring: 'fetch',
+  pattern: 'fetch',
 });
 
 const makeTsResultsWithCustom = () => [
@@ -894,6 +894,12 @@ describe('Results — AST custom nodes', () => {
     expect(screen.getByRole('button', { name: /remove node type filter/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'fetch_call' }));
     expect(screen.queryByRole('button', { name: /remove node type filter/i })).not.toBeInTheDocument();
+  });
+
+  test('custom node pill tooltip uses pattern attribute', () => {
+    render(<Results result={makeResult()} repoInfo={null} errors={[]} tsResults={makeTsResultsWithCustom()} tsError="" />);
+    const pill = screen.getByRole('button', { name: 'fetch_call' });
+    expect(pill.title).toBe('Custom: call_expression matching "fetch"');
   });
 });
 

@@ -137,16 +137,17 @@
           const customMerged = new Map();
           for (const def of customDefs) {
             const targetSources = sources[def.node] || [];
-            const subs = Array.isArray(def.substring) ? def.substring : [def.substring];
-            const matched = targetSources.filter(s => subs.some(sub => s.textLower.includes(sub.toLowerCase())));
+            const patterns = Array.isArray(def.pattern) ? def.pattern : [def.pattern];
+            const regexes = patterns.map(p => { try { return new RegExp(p, 'i'); } catch(e) { return null; } });
+            const matched = targetSources.filter(s => regexes.some(re => re && re.test(s.textLower)));
             if (matched.length === 0) continue;
-            const subDisplay = subs.join(', ');
+            const patternDisplay = patterns.join(', ');
             if (customMerged.has(def.name)) {
               const existing = customMerged.get(def.name);
               existing.sources.push(...matched);
               existing.count += matched.length;
               existing.node += `, ${def.node}`;
-              existing.substring += `, ${subDisplay}`;
+              existing.pattern += `, ${patternDisplay}`;
             } else {
               customMerged.set(def.name, {
                 type: def.name,
@@ -155,7 +156,7 @@
                 sources: matched,
                 custom: true,
                 node: def.node,
-                substring: subDisplay,
+                pattern: patternDisplay,
               });
             }
           }
