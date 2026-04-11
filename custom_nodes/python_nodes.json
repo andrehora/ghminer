@@ -1,12 +1,12 @@
 [
   {"name": "todo", "node": "comment", "pattern": ["todo", "fixme", "xxx"]},
-  {"name": "test", "node": "function_definition", "pattern": "def test_"},
-  {"name": "private_method", "node": "function_definition", "pattern": "def _"},
-  {"name": "magic_method", "node": "function_definition", "pattern": "def __"},
-  {"name": "async_function", "node": "function_definition", "pattern": "async def "},
-  {"name": "print", "node": "call", "pattern": "print\\("},
+  {"name": "test", "node": "function_definition", "pattern": "^def test_"},
+  {"name": "private_method", "node": "function_definition", "pattern": "^def _(?!_)"},
+  {"name": "magic_method", "node": "function_definition", "pattern": "^def __"},
+  {"name": "async_function", "node": "function_definition", "pattern": "^async def "},
+  {"name": "print", "node": "call", "pattern": "^print\\("},
 
-  {"name": "pytest_fixture", "node": "decorated_definition", "pattern": "@pytest\\.fixture"},
-  {"name": "pytest_parametrize", "node": "decorated_definition", "pattern": "@pytest\\.mark\\.parametrize"},
-  {"name": "fastapi_endpoint", "node": "decorated_definition", "pattern": ["@app\\.", "@router\\."]}
+  {"name": "pytest_fixture", "node": "decorated_definition", "pattern": "^@pytest\\.fixture"},
+  {"name": "pytest_parametrize", "node": "decorated_definition", "pattern": "^@pytest\\.mark\\.parametrize"},
+  {"name": "fastapi_endpoint", "node": "decorated_definition", "pattern": ["^@app\\.", "^@router\\."]}
 ]

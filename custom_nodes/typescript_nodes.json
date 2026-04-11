@@ -1,6 +1,6 @@
 [
   {"name": "todo", "node": "comment", "pattern": ["todo", "fixme", "xxx"]},
-  {"name": "test", "node": "call_expression", "pattern": ["test(", "it("]},
-  {"name": "async_function", "node": "function_declaration", "pattern": "async function"},
-  {"name": "console_log", "node": "call_expression", "pattern": "console\\.log"}
+  {"name": "test", "node": "call_expression", "pattern": ["^test\\(", "^it\\("]},
+  {"name": "async_function", "node": "function_declaration", "pattern": "^async function"},
+  {"name": "console_log", "node": "call_expression", "pattern": "^console\\.log"}
 ]
