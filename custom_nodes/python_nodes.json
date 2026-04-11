@@ -5,7 +5,20 @@
   {"name": "magic_method", "node": "function_definition", "pattern": "^def __"},
   {"name": "async_function", "node": "function_definition", "pattern": "^async def "},
   {"name": "print", "node": "call", "pattern": "^print\\("},
+  {"name": "builtin_function", "node": "call", "pattern": "^(abs|aiter|all|anext|any|ascii|bin|bool|breakpoint|bytearray|bytes|callable|chr|classmethod|compile|complex|delattr|dict|dir|divmod|enumerate|eval|exec|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|isinstance|issubclass|iter|len|list|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|vars|zip|__import__)\\("},
+  {"name": "script_entry", "node": "if_statement", "pattern": "__name__.*__main__"},
+  {"name": "exception_class", "node": "class_definition", "pattern": "^class \\w+.*\\b(exception|error)\\b"},
+  {"name": "enum_class", "node": "class_definition", "pattern": "^class \\w+.*\\benum\\b"},
+  {"name": "abstract_class", "node": "class_definition", "pattern": "^class \\w+.*\\babc\\b"},
 
+  {"name": "dataclass", "node": "decorated_definition", "pattern": "^@dataclass"},
+  {"name": "property", "node": "decorated_definition", "pattern": "^@property"},
+  {"name": "staticmethod", "node": "decorated_definition", "pattern": "^@staticmethod"},
+  {"name": "classmethod", "node": "decorated_definition", "pattern": "^@classmethod"},
+  {"name": "abstractmethod", "node": "decorated_definition", "pattern": "^@abstractmethod"},
+  {"name": "lru_cache", "node": "decorated_definition", "pattern": "^@(functools\\.)?lru_cache"},
+  {"name": "overload", "node": "decorated_definition", "pattern": "^@overload"},
+  
   {"name": "pytest_fixture", "node": "decorated_definition", "pattern": "^@pytest\\.fixture"},
   {"name": "pytest_parametrize", "node": "decorated_definition", "pattern": "^@pytest\\.mark\\.parametrize"},
   {"name": "fastapi_endpoint", "node": "decorated_definition", "pattern": ["^@app\\.", "^@router\\."]}
