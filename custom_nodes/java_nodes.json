@@ -1,0 +1,5 @@
+[
+  {"name": "todo", "node": ["block_comment", "line_comment"], "pattern": ["todo", "xxx"]},
+  {"name": "main_method", "node": "method_declaration", "pattern": "public\\s+static\\s+void\\s+main\\s*\\("},
+  {"name": "test_method", "node": "method_declaration", "pattern": "^@Test"}
+]
