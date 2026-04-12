@@ -263,7 +263,7 @@
 
     const customNodeTypes = new Set(tsNodes.filter(n => n.custom).map(n => n.type));
     const builtInNodes = tsNodes.filter(n => !n.custom);
-    const customNodes = tsNodes.filter(n => n.custom);
+    const customNodes = tsNodes.filter(n => n.custom).sort((a, b) => b.count - a.count);
     const allNodeTypes = builtInNodes.map(n => n.type);
     const topNodeTypes = showAllTypes ? allNodeTypes : allNodeTypes.slice(0, 15);
     const hiddenCount = allNodeTypes.length - 15;

@@ -5,6 +5,7 @@
   {"name": "magic_method", "node": "function_definition", "pattern": "^def __"},
   {"name": "async_function", "node": "function_definition", "pattern": "^async def "},
   {"name": "print", "node": "call", "pattern": "^print\\("},
+  {"name": "eval", "node": "call", "pattern": "^eval\\("},
   {"name": "builtin_function", "node": "call", "pattern": "^(abs|aiter|all|anext|any|ascii|bin|bool|breakpoint|bytearray|bytes|callable|chr|classmethod|compile|complex|delattr|dict|dir|divmod|enumerate|eval|exec|filter|float|format|frozenset|getattr|globals|hasattr|hash|help|hex|id|input|int|isinstance|issubclass|iter|len|list|locals|map|max|memoryview|min|next|object|oct|open|ord|pow|print|property|range|repr|reversed|round|set|setattr|slice|sorted|staticmethod|str|sum|super|tuple|type|vars|zip|__import__)\\("},
   {"name": "script_entry", "node": "if_statement", "pattern": "__name__.*__main__"},
   {"name": "exception_class", "node": "class_definition", "pattern": "^class \\w+.*\\b(exception|error)\\b"},
