@@ -136,7 +136,8 @@
           const customDefs = await loadCustomNodes(langConfig.id);
           const customMerged = new Map();
           for (const def of customDefs) {
-            const targetSources = sources[def.node] || [];
+            const nodeTypes = Array.isArray(def.node) ? def.node : [def.node];
+            const targetSources = nodeTypes.flatMap(n => sources[n] || []);
             const patterns = Array.isArray(def.pattern) ? def.pattern : [def.pattern];
             const regexes = patterns.map(p => { try { return new RegExp(p, 'i'); } catch(e) { return null; } });
             const matched = targetSources.filter(s => regexes.some(re => re && re.test(s.textLower)));
@@ -155,7 +156,7 @@
                 count: matched.length,
                 sources: matched,
                 custom: true,
-                node: def.node,
+                node: Array.isArray(def.node) ? def.node.join(', ') : def.node,
                 pattern: patternDisplay,
               });
             }

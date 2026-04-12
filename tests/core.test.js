@@ -604,6 +604,15 @@ describe('applyTsNodeFilter', () => {
     const texts = results[0].items.map(i => i.text);
     expect(texts).not.toContain('orphan');
   });
+
+  test('duplicate type in filter chain reduces scope (nested containment only)', () => {
+    // function_declaration:function_declaration: should find function_declaration nodes
+    // that are STRICTLY nested inside another function_declaration (not the same node).
+    // In the fixture, no function_declaration is nested inside another, so result should
+    // be empty — not the same 2 matches as a single function_declaration filter.
+    const results = applyTsNodeFilter(tsNodes, ['function_declaration', 'function_declaration'], '', 10);
+    expect(results).toHaveLength(0);
+  });
 });
 
 // ── computeContextualCounts ───────────────────────────────────────────────────
@@ -811,5 +820,64 @@ describe('summarizeNodes', () => {
   test('count matches the number of source items', () => {
     const sources = { expr: [src('1'), src('2'), src('3'), src('4')] };
     expect(summarizeNodes(sources)[0].count).toBe(4);
+  });
+});
+
+// ── Java custom nodes ────────────────────────────────────────────────────────
+const fs = require('fs');
+const path = require('path');
+
+describe('java_nodes.json', () => {
+  const filePath = path.join(__dirname, '..', 'custom_nodes', 'java_nodes.json');
+  let nodes;
+
+  beforeAll(() => {
+    const raw = fs.readFileSync(filePath, 'utf8');
+    nodes = JSON.parse(raw);
+  });
+
+  test('file exists and is valid JSON', () => {
+    expect(Array.isArray(nodes)).toBe(true);
+  });
+
+  test('each entry has name, node, and pattern fields', () => {
+    for (const entry of nodes) {
+      expect(typeof entry.name).toBe('string');
+      const isStringNode = typeof entry.node === 'string';
+      const isArrayNode = Array.isArray(entry.node) && entry.node.every(n => typeof n === 'string') && entry.node.length > 0;
+      expect(isStringNode || isArrayNode).toBe(true);
+      expect(entry.pattern !== undefined).toBe(true);
+    }
+  });
+
+  test('node arrays contain valid non-empty strings', () => {
+    for (const entry of nodes) {
+      if (Array.isArray(entry.node)) {
+        expect(entry.node.length).toBeGreaterThan(0);
+        for (const n of entry.node) {
+          expect(typeof n).toBe('string');
+          expect(n.length).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  test('at least one entry uses node as an array', () => {
+    const hasArrayNode = nodes.some(entry => Array.isArray(entry.node));
+    expect(hasArrayNode).toBe(true);
+  });
+
+  test('all patterns compile as valid regex', () => {
+    for (const entry of nodes) {
+      const patterns = Array.isArray(entry.pattern) ? entry.pattern : [entry.pattern];
+      for (const p of patterns) {
+        expect(() => new RegExp(p, 'i')).not.toThrow();
+      }
+    }
+  });
+
+  test('names are unique', () => {
+    const names = nodes.map(n => n.name);
+    expect(new Set(names).size).toBe(names.length);
   });
 });

@@ -292,7 +292,10 @@
         sources = sources.filter(s => {
           const ranges = containerRanges.get(s.file);
           if (!ranges) return false;
-          return ranges.some(r => s.startIndex >= r.start && s.endIndex <= r.end);
+          return ranges.some(r =>
+            s.startIndex >= r.start && s.endIndex <= r.end &&
+            !(s.startIndex === r.start && s.endIndex === r.end)
+          );
         });
       }
       containerRanges = new Map();
@@ -352,7 +355,9 @@
             if (deduped.length < MAX) deduped.push(s);
           }
         }
-        out.push({ ...lastLevelNode, items: deduped, matches: seen.size });
+        if (seen.size > 0) {
+          out.push({ ...lastLevelNode, items: deduped, matches: seen.size });
+        }
       } else {
         // Type + text filter
         const items = [];
