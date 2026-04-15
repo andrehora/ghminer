@@ -6,6 +6,8 @@ const {
   langOf,
   formatSize,
   flattenTree,
+  flattenGithubTree,
+  parseTokens,
   withConcurrency,
   analyze,
   TREE_SITTER_LANGUAGES,
@@ -879,5 +881,70 @@ describe('java_nodes.json', () => {
   test('names are unique', () => {
     const names = nodes.map(n => n.name);
     expect(new Set(names).size).toBe(names.length);
+  });
+});
+
+// ── flattenGithubTree ─────────────────────────────────────────────────────────
+
+describe('flattenGithubTree', () => {
+  test('returns only blob entries', () => {
+    const items = [
+      { path: 'src/index.js', type: 'blob', size: 1200 },
+      { path: 'src/', type: 'tree' },
+      { path: 'README.md', type: 'blob', size: 500 },
+    ];
+    const result = flattenGithubTree(items);
+    expect(result).toHaveLength(2);
+    expect(result.map(r => r.path)).toEqual(['src/index.js', 'README.md']);
+  });
+
+  test('maps size from blob entry', () => {
+    const items = [{ path: 'a.py', type: 'blob', size: 4096 }];
+    const [f] = flattenGithubTree(items);
+    expect(f.size).toBe(4096);
+    expect(f.path).toBe('a.py');
+  });
+
+  test('defaults size to 0 when missing', () => {
+    const items = [{ path: 'no-size.js', type: 'blob' }];
+    const [f] = flattenGithubTree(items);
+    expect(f.size).toBe(0);
+  });
+
+  test('returns empty array for empty input', () => {
+    expect(flattenGithubTree([])).toEqual([]);
+  });
+
+  test('returns empty array when only tree entries', () => {
+    const items = [{ path: 'src/', type: 'tree' }, { path: 'lib/', type: 'tree' }];
+    expect(flattenGithubTree(items)).toEqual([]);
+  });
+});
+
+// ── parseTokens ───────────────────────────────────────────────────────────────
+
+describe('parseTokens', () => {
+  test('returns single token in array', () => {
+    expect(parseTokens('ghp_abc')).toEqual(['ghp_abc']);
+  });
+
+  test('splits multiple tokens by comma', () => {
+    expect(parseTokens('ghp_aaa, ghp_bbb, ghp_ccc')).toEqual(['ghp_aaa', 'ghp_bbb', 'ghp_ccc']);
+  });
+
+  test('trims whitespace around each token', () => {
+    expect(parseTokens('  ghp_x  ,  ghp_y  ')).toEqual(['ghp_x', 'ghp_y']);
+  });
+
+  test('filters out empty segments', () => {
+    expect(parseTokens('ghp_a,,ghp_b,')).toEqual(['ghp_a', 'ghp_b']);
+  });
+
+  test('returns empty array for empty string', () => {
+    expect(parseTokens('')).toEqual([]);
+  });
+
+  test('returns empty array for whitespace-only string', () => {
+    expect(parseTokens('   ')).toEqual([]);
   });
 });

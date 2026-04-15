@@ -13,6 +13,7 @@ import {
   RepoInput,
   LoadingProgress,
   Results,
+  GithubTokenButton,
 } from '../src/components.js';
 
 // ── StatCard ──────────────────────────────────────────────────────────────────
@@ -931,5 +932,74 @@ describe('Results — tsResults change', () => {
     });
     // Falls back to javascript — function_declaration is in the table
     expect(screen.getAllByText('function_declaration').some(el => el.tagName === 'SPAN')).toBe(true);
+  });
+});
+
+// ── GithubTokenButton ─────────────────────────────────────────────────────────
+
+describe('GithubTokenButton', () => {
+  test('shows "Set GitHub Token" button when no token', () => {
+    render(<GithubTokenButton token="" onTokenChange={() => {}} />);
+    expect(screen.getByRole('button', { name: /set github token/i })).toBeInTheDocument();
+  });
+
+  test('shows "Change Token" button when token is set', () => {
+    render(<GithubTokenButton token="ghp_abc123" onTokenChange={() => {}} />);
+    expect(screen.getByRole('button', { name: /change token/i })).toBeInTheDocument();
+  });
+
+  test('shows "1 token active" when one token is set', () => {
+    render(<GithubTokenButton token="ghp_abc123" onTokenChange={() => {}} />);
+    expect(screen.getByText(/1 token active/i)).toBeInTheDocument();
+  });
+
+  test('shows "2 tokens active" when two tokens are set', () => {
+    render(<GithubTokenButton token="ghp_aaa, ghp_bbb" onTokenChange={() => {}} />);
+    expect(screen.getByText(/2 tokens active/i)).toBeInTheDocument();
+  });
+
+  test('shows remaining requests when rateLimitRemaining is provided', () => {
+    render(<GithubTokenButton token="ghp_abc123" onTokenChange={() => {}} rateLimitRemaining={4200} />);
+    expect(screen.getByText(/4,200 requests remaining/i)).toBeInTheDocument();
+  });
+
+  test('does not show remaining requests when rateLimitRemaining is null', () => {
+    render(<GithubTokenButton token="ghp_abc123" onTokenChange={() => {}} rateLimitRemaining={null} />);
+    expect(screen.queryByText(/requests remaining/i)).not.toBeInTheDocument();
+  });
+
+  test('opens input dialog on button click', async () => {
+    const user = userEvent.setup();
+    render(<GithubTokenButton token="" onTokenChange={() => {}} />);
+    await user.click(screen.getByRole('button', { name: /set github token/i }));
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+  });
+
+  test('calls onTokenChange with typed token on save', async () => {
+    const user = userEvent.setup();
+    const onTokenChange = jest.fn();
+    render(<GithubTokenButton token="" onTokenChange={onTokenChange} />);
+    await user.click(screen.getByRole('button', { name: /set github token/i }));
+    await user.type(screen.getByRole('textbox'), 'ghp_newtoken');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+    expect(onTokenChange).toHaveBeenCalledWith('ghp_newtoken');
+  });
+
+  test('calls onTokenChange with empty string on clear', async () => {
+    const user = userEvent.setup();
+    const onTokenChange = jest.fn();
+    render(<GithubTokenButton token="ghp_abc123" onTokenChange={onTokenChange} />);
+    await user.click(screen.getByRole('button', { name: /change token/i }));
+    await user.click(screen.getByRole('button', { name: /clear/i }));
+    expect(onTokenChange).toHaveBeenCalledWith('');
+  });
+
+  test('closes dialog on cancel', async () => {
+    const user = userEvent.setup();
+    render(<GithubTokenButton token="" onTokenChange={() => {}} />);
+    await user.click(screen.getByRole('button', { name: /set github token/i }));
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 });

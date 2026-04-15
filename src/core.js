@@ -202,6 +202,17 @@
     return out;
   }
 
+  function parseTokens(str) {
+    if (!str) return [];
+    return str.split(',').map(t => t.trim()).filter(Boolean);
+  }
+
+  function flattenGithubTree(treeItems) {
+    return treeItems
+      .filter(item => item.type === 'blob')
+      .map(item => ({ path: item.path, size: item.size || 0 }));
+  }
+
   async function withConcurrency(tasks, concurrency, onDone) {
     const results = [];
     let idx = 0;
@@ -412,6 +423,8 @@
     langOf,
     formatSize,
     flattenTree,
+    flattenGithubTree,
+    parseTokens,
     withConcurrency,
     analyze,
     langIcon,

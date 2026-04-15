@@ -725,6 +725,75 @@
     );
   }
 
+  // ── GithubTokenButton ────────────────────────────────────────────────────────
+  // Shows current token status and allows setting/clearing via an inline dialog.
+  // token is a comma-separated string of one or more PATs.
+  // Props: token (string), onTokenChange (fn(newToken))
+
+  function GithubTokenButton({ token, onTokenChange, rateLimitRemaining = null }) {
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState('');
+
+    const tokenCount = token
+      ? token.split(',').map(t => t.trim()).filter(Boolean).length
+      : 0;
+
+    function handleOpen() {
+      setDraft(token || '');
+      setOpen(true);
+    }
+
+    function handleSave() {
+      onTokenChange(draft.trim());
+      setOpen(false);
+    }
+
+    function handleClear() {
+      onTokenChange('');
+      setOpen(false);
+    }
+
+    function handleCancel() {
+      setOpen(false);
+    }
+
+    return (
+      <div className="github-token-wrap">
+        {tokenCount > 0 && (
+          <span className="github-token-active">
+            {tokenCount} {tokenCount === 1 ? 'token' : 'tokens'} active
+            {rateLimitRemaining !== null && ` · ${rateLimitRemaining.toLocaleString()} requests remaining`}
+          </span>
+        )}
+        <button type="button" className="github-token-btn" onClick={handleOpen}>
+          {tokenCount > 0 ? 'Change token' : 'Set GitHub Token'}
+        </button>
+        {open && (
+          <div className="github-token-dialog" role="dialog" aria-modal="true">
+            <label className="github-token-label">
+              GitHub Personal Access Tokens (comma-separated)
+              <input
+                type="text"
+                className="github-token-input"
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                placeholder="ghp_token1, ghp_token2"
+                autoFocus
+              />
+            </label>
+            <div className="github-token-actions">
+              <button type="button" onClick={handleSave} className="github-token-save">Save</button>
+              {tokenCount > 0 && (
+                <button type="button" onClick={handleClear} className="github-token-clear">Clear</button>
+              )}
+              <button type="button" onClick={handleCancel} className="github-token-cancel">Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return {
     LangIcon,
     StatCard,
@@ -736,5 +805,6 @@
     RepoInput,
     LoadingProgress,
     Results,
+    GithubTokenButton,
   };
 }));

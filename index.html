@@ -30,7 +30,7 @@
       SOURCE_EXTENSIONS, EXT_TO_LANG,
       TREE_SITTER_LANGUAGES, tsLangForPath, groupFilesByTsLang,
       parseRepoUrl, extOf, langOf, formatSize,
-      flattenTree, withConcurrency, analyze,
+      flattenTree, flattenGithubTree, parseTokens, withConcurrency, analyze,
       langIcon, escapeHtml, summarizeNodes,
     } = window.GhMinerCore;
 
@@ -39,8 +39,23 @@
     // ── Components (from components.js) ───────────────────────────────────────────
     const {
       LangIcon, StatCard, SectionHeading, Section, BarChartCSS,
-      TopBar, Header, RepoInput, LoadingProgress, Results,
+      TopBar, Header, RepoInput, LoadingProgress, Results, GithubTokenButton,
     } = window.GhMinerComponents;
+
+    // ── GitHub token (persisted to localStorage) ───────────────────────────────
+    const GITHUB_TOKEN_KEY = 'ghminer_github_token';
+
+    function loadStoredToken() {
+      try { return localStorage.getItem(GITHUB_TOKEN_KEY) || ''; }
+      catch { return ''; }
+    }
+
+    function saveStoredToken(t) {
+      try {
+        if (t) localStorage.setItem(GITHUB_TOKEN_KEY, t);
+        else localStorage.removeItem(GITHUB_TOKEN_KEY);
+      } catch { }
+    }
 
     // ── Tree-sitter ────────────────────────────────────────────────────────────────
 
@@ -171,10 +186,10 @@
       return results;
     }
 
-    async function fetchWithRetry(url, signal) {
+    async function fetchWithRetry(url, signal, opts = {}) {
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const res = await fetch(url, { signal });
+          const res = await fetch(url, { signal, ...opts });
           if (res.ok) return res;
           if (res.status === 404) return null;
           // non-200, non-404: retry once
@@ -201,6 +216,26 @@
       const [tsError, setTsError] = useState('');
       const abortRef = useRef(null);
       const [repoList, setRepoList] = useState([]);
+      const [githubToken, setGithubToken] = useState(loadStoredToken);
+      const [rateLimitRemaining, setRateLimitRemaining] = useState(null);
+
+      const handleTokenChange = useCallback((t) => {
+        saveStoredToken(t);
+        setGithubToken(t);
+      }, []);
+
+      useEffect(() => {
+        const tokens = parseTokens(githubToken);
+        if (tokens.length === 0) { setRateLimitRemaining(null); return; }
+        let cancelled = false;
+        fetch('https://api.github.com/rate_limit', {
+          headers: { Authorization: `Bearer ${tokens[0]}`, Accept: 'application/vnd.github+json' },
+        })
+          .then(r => r.ok ? r.json() : null)
+          .then(json => { if (!cancelled && json) setRateLimitRemaining(json.rate.remaining); })
+          .catch(() => {});
+        return () => { cancelled = true; };
+      }, [githubToken]);
 
       useEffect(() => {
         fetch('data/repos.csv')
@@ -241,18 +276,51 @@
         setPhase('loading');
         setProgress({ done: 0, total: 0 });
 
-        // Step 1: list files
+        // Step 1: list files — prefer GitHub API when tokens are set
         let fileTree;
+        const tokens = parseTokens(githubToken);
+        const useGithub = tokens.length > 0;
+
+        // Returns the token to use for the i-th download request.
+        // Each token is used for up to 5 000 requests before rotating.
+        const TOKEN_LIMIT = 5000;
+        function tokenFor(i) {
+          return tokens[Math.min(Math.floor(i / TOKEN_LIMIT), tokens.length - 1)];
+        }
+
         try {
-          const listUrl = `https://data.jsdelivr.com/v1/packages/gh/${user}/${repo}@${version}`;
-          const res = await fetch(listUrl, { signal });
-          if (!res.ok) {
-            setPhase('input');
-            setError('Repo not found, too large, or not public (listing failed).');
-            return;
+          if (useGithub) {
+            const treeUrl = `https://api.github.com/repos/${user}/${repo}/git/trees/HEAD?recursive=1`;
+            const res = await fetch(treeUrl, {
+              signal,
+              headers: { Authorization: `Bearer ${tokens[0]}`, Accept: 'application/vnd.github+json' },
+            });
+            if (!res.ok) {
+              setPhase('input');
+              setError(res.status === 401
+                ? 'GitHub token is invalid or expired.'
+                : 'Repo not found or not accessible with this token.');
+              return;
+            }
+            const json = await res.json();
+            const fileLimit = TOKEN_LIMIT * tokens.length;
+            if (json.truncated || json.tree.length >= fileLimit) {
+              setPhase('input');
+              setError(`Repo has too many files (≥ ${fileLimit.toLocaleString()}). Add more tokens or use jsDelivr (remove your tokens).`);
+              return;
+            }
+            fileTree = flattenGithubTree(json.tree);
+          } else {
+            const listUrl = `https://data.jsdelivr.com/v1/packages/gh/${user}/${repo}@${version}`;
+            const res = await fetch(listUrl, { signal });
+            if (!res.ok) {
+              setPhase('input');
+              setError('Repo not found, too large, or not public (listing failed).');
+              return;
+            }
+            const json = await res.json();
+            fileTree = flattenTree(json.files || []);
           }
-          const json = await res.json();
-          fileTree = flattenTree(json.files || []);
         } catch (e) {
           if (e.name !== 'AbortError') {
             setPhase('input');
@@ -281,11 +349,13 @@
         const failed = [];
         let done = 0;
 
-        const tasks = tsFiles.map(f => async () => {
+        const tasks = tsFiles.map((f, i) => async () => {
           if (signal.aborted) return null;
-          const fileUrl = `https://cdn.jsdelivr.net/gh/${user}/${repo}@${version}/${f.path}`;
+          const fileUrl = useGithub
+            ? `https://raw.githubusercontent.com/${user}/${repo}/HEAD/${f.path}`
+            : `https://cdn.jsdelivr.net/gh/${user}/${repo}@${version}/${f.path}`;
           try {
-            const res = await fetchWithRetry(fileUrl, signal);
+            const res = await fetchWithRetry(fileUrl, signal, {});
             if (res) {
               const content = await res.text();
               return { path: f.path, size: f.size || content.length, content };
@@ -401,6 +471,10 @@
           {phase === 'results' && result && (
             <Results result={result} repoInfo={repoInfo} errors={errors} tsResults={tsResults} tsError={tsError} />
           )}
+
+          <div className="github-token-footer">
+            <GithubTokenButton token={githubToken} onTokenChange={handleTokenChange} rateLimitRemaining={rateLimitRemaining} />
+          </div>
         </div>
       );
     }
